@@ -137,10 +137,12 @@ Deno.serve(async (req) => {
 
   const activo   = !!quien && quien.estado === 'Activo';
   const esAdmin  = activo && quien.rol === 'admin';
-  // Alta delegada: solo la ruta de alta, solo con el permiso concedido por un
-  // administrador y solo para el rol de agente (se fuerza más abajo).
+  // Alta delegada: solo la ruta de alta. El Jefe de Equipo puede dar de alta
+  // cuentas de rango inferior (Gestión Comercial y Back Office); quien tenga
+  // el permiso «sys.alta_agentes», solo agentes. Los roles se fuerzan abajo.
+  const ROLES_DELEGADOS = quien?.rol === 'manager' ? ['commercial', 'backoffice'] : ['commercial'];
   const altaDelegada = !esAdmin && activo && req.method === 'POST' && !id &&
-                       quien.permisos?.['sys.alta_agentes'] === true;
+                       (quien.rol === 'manager' || quien.permisos?.['sys.alta_agentes'] === true);
 
   // Ver como: la regla de quién puede entrar en qué cuenta se comprueba abajo,
   // con la ficha del destino delante.
@@ -234,8 +236,10 @@ Deno.serve(async (req) => {
       if (nombre.length < 2)  return error('Nombre no válido.', 'NOMBRE_INVALIDO');
       if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return error('Correo no válido.', 'EMAIL_INVALIDO');
       if (!ROLES.includes(b.rol)) return error('Rol no válido.', 'ROL_INVALIDO');
-      if (altaDelegada && b.rol !== 'commercial') {
-        return error('Solo puedes dar de alta agentes (Gestión Comercial).', 'ROL_NO_PERMITIDO', 403);
+      if (altaDelegada && !ROLES_DELEGADOS.includes(b.rol)) {
+        return error(quien.rol === 'manager'
+          ? 'Solo puedes dar de alta cuentas de Gestión Comercial o Back Office.'
+          : 'Solo puedes dar de alta agentes (Gestión Comercial).', 'ROL_NO_PERMITIDO', 403);
       }
       if (b.prefijo && !/^\+\d{1,3}$/.test(String(b.prefijo))) {
         return error('El prefijo debe ser internacional, como +34.', 'PREFIJO_INVALIDO');
@@ -306,7 +310,7 @@ Deno.serve(async (req) => {
 
       if (altaDelegada) {
         await anota({ id: perfil.id, nombre: `${nombre} ${apellidos}`.trim() },
-                    'Cuenta creada', `Alta delegada de agente · relación ${perfil.rel}`);
+                    'Cuenta creada', `Alta delegada (${b.rol}) · relación ${perfil.rel}`);
       }
 
       // La contraseña en claro sale UNA vez, para entregarla en mano.

@@ -7360,44 +7360,62 @@ USU = {form:null, creado:null, filtro:'', rol:'', est:'', det:null, tab:'info',
        verTok:false, borrar:null, aviso:''};
 
 /* ============================== VISTA ==================================== */
-/* Alta delegada: el admin concede «sys.alta_agentes» a una persona concreta
-   (María, por ejemplo) para que pueda crear cuentas de agente. La Edge
-   Function lo vuelve a comprobar y fuerza el rol; esto solo lo refleja. */
+/* Alta delegada. El Jefe de Equipo da de alta cuentas de rango inferior
+   (Gestión Comercial y Back Office), que quedan a su cargo; quien tenga el
+   permiso «sys.alta_agentes», solo agentes. La Edge Function lo vuelve a
+   comprobar y fuerza el rol y el superior; esto solo lo refleja. */
 function puedoAltaAgentes(){
-  return S.role === 'admin' || !!(S.perms && S.perms['sys.alta_agentes']);
+  return S.role === 'admin' || S.role === 'manager' || !!(S.perms && S.perms['sys.alta_agentes']);
+}
+function rolesAlta(){
+  return S.role === 'admin' ? Object.keys(ROLES) :
+         S.role === 'manager' ? ['commercial', 'backoffice'] : ['commercial'];
 }
 
 function viewAltaAgentes(v){
-  var agentes = USUARIOS.filter(function(u){ return u.rol === 'commercial'; });
-  var filas = agentes.map(function(u){
+  var yo = yoUsuario(), jefe = S.role === 'manager';
+  var roles = rolesAlta();
+  /* El jefe ve a su equipo (quien tiene a su cargo); quien solo tiene el
+     permiso de alta, los agentes que puede ver. */
+  var lista = USUARIOS.filter(function(u){
+    if(yo && u.id === yo.id) return false;
+    if(jefe && USUARIOS.some(function(x){ return x.conSup; })) return yo && u.sup === yo.id;
+    return roles.indexOf(u.rol) > -1;
+  });
+  var filas = lista.map(function(u){
     return '<tr class="u-fila'+(u.est!=='Activo'?' apagada':'')+'">'+
       '<td><div class="row" style="gap:11px;align-items:center">'+avatarHTML(u,38)+
         '<div style="min-width:0"><div class="w trunc">'+esc(u.n)+'</div>'+
         '<div class="tiny muted trunc">'+esc(u.mail)+'</div></div></div></td>'+
+      '<td><span class="chip">'+esc(etiquetaRol(u))+'</span></td>'+
       '<td class="tiny muted nowrap">'+esc(u.tel || '—')+'</td>'+
       '<td class="tiny mono">'+esc(u.rel)+'</td>'+
       '<td>'+chipEstado(u.est)+'</td>'+
-      '<td class="tiny muted nowrap">'+esc(u.alta || '—')+'</td></tr>';
-  }).join('') || '<tr><td colspan="5" class="muted" style="text-align:center;padding:26px">'+
-                 'Todavía no hay agentes dados de alta.</td></tr>';
+      '<td class="tiny muted nowrap">'+esc(u.alta || '—')+'</td>'+
+      '<td style="text-align:right">'+(vcPuede(u) ? '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'">'+
+        ic('logout',12)+' Ver como</button>' : '')+'</td></tr>';
+  }).join('') || '<tr><td colspan="7" class="muted" style="text-align:center;padding:26px">'+
+                 (jefe ? 'Todavía no tienes a nadie a tu cargo.' : 'Todavía no hay agentes dados de alta.')+'</td></tr>';
 
   v.innerHTML =
   '<div class="card" style="margin-bottom:16px">'+
     '<div class="card-h" style="margin:0;flex-wrap:wrap">'+
       '<div><div class="row" style="gap:8px;margin-bottom:6px">'+
-        '<span class="chip blue">Alta delegada</span></div>'+
-        '<h3 style="font-size:18px">Alta de agentes</h3>'+
-        '<p>Puedes crear cuentas de '+esc(ROLES.commercial.label)+'. '+
-        'Para otros roles, contraseñas o bajas, habla con el Administrador.</p></div>'+
-      '<button class="btn btn-p" id="u-nuevo">'+ic('userPlus',16)+' Dar de alta agente</button></div>'+
+        '<span class="chip blue">'+(jefe ? 'Mi equipo' : 'Alta delegada')+'</span></div>'+
+        '<h3 style="font-size:18px">'+(jefe ? 'Usuarios de mi equipo' : 'Alta de agentes')+'</h3>'+
+        '<p>Puedes crear cuentas de '+roles.map(function(k){ return esc(ROLES[k].label); }).join(' y ')+
+        (jefe ? '; quedan a tu cargo automáticamente' : '')+
+        '. Para otros roles, contraseñas o bajas, habla con el Administrador.</p></div>'+
+      '<button class="btn btn-p" id="u-nuevo">'+ic('userPlus',16)+(jefe ? ' Dar de alta usuario' : ' Dar de alta agente')+'</button></div>'+
   '</div>'+
   '<div class="card" style="padding:0;overflow:hidden">'+
     '<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
-      '<th>Agente</th><th>Teléfono</th><th>N.º relación</th><th>Estado</th><th>Alta</th>'+
+      '<th>Usuario</th><th>Rol</th><th>Teléfono</th><th>N.º relación</th><th>Estado</th><th>Alta</th><th></th>'+
       '</tr></thead><tbody>'+filas+'</tbody></table></div></div>'+
   altaHTML() + credencialesHTML();
 
   eventosUsuarios(v);
+  qa('[data-vercomo]').forEach(function(b){ b.onclick = function(){ vcEntra(usuarioPorId(b.dataset.vercomo)); }; });
 }
 
 /* ---------------------- HISTORIAL DE «VER COMO» -------------------------
@@ -7673,7 +7691,7 @@ function altaHTML(){
   return '<div class="ov" data-ov="alta"><div class="modal" style="max-width:600px">'+
     '<div class="row" style="justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px">'+
       '<h3 style="margin:0;font-size:16px;color:#fff">'+
-        (S.role === 'admin' ? 'Dar de alta a un usuario' : 'Dar de alta a un agente')+'</h3>'+
+        (S.role === 'admin' || S.role === 'manager' ? 'Dar de alta a un usuario' : 'Dar de alta a un agente')+'</h3>'+
       '<button class="icon-btn" data-u-cerrar="1">'+ic('x',16)+'</button></div>'+
     '<div class="grid g-2">'+
       '<div class="field"><label class="f">Nombre</label>'+
@@ -7693,8 +7711,8 @@ function altaHTML(){
     '</div>'+
     '<div class="grid g-2">'+
       '<div class="field"><label class="f">Rol asignado</label><select class="inp" id="nu-rol"'+
-        (S.role === 'admin' ? '' : ' disabled')+'>'+
-        (S.role === 'admin' ? Object.keys(ROLES) : ['commercial']).map(function(k){
+        (rolesAlta().length > 1 ? '' : ' disabled')+'>'+
+        rolesAlta().map(function(k){
           return '<option value="'+k+'"'+(F.rol===k?' selected':'')+'>'+ROLES[k].label+'</option>'; }).join('')+
         '</select><div class="tiny muted" style="margin-top:6px">'+esc(ROLES[F.rol].desc)+'</div></div>'+
       '<div class="field"><label class="f">Número de relación</label>'+
@@ -7793,7 +7811,7 @@ function eventosUsuarios(v){
     F.nom=q('#nu-nom').value; F.ape=q('#nu-ape').value; F.mail=q('#nu-mail').value;
     F.pre=q('#nu-pre').value; F.num=q('#nu-num').value; F.ext=q('#nu-ext').value;
     F.rol=q('#nu-rol').value; F.rel=q('#nu-rel').value; F.pass=q('#nu-pass').value;
-    if(S.role !== 'admin') F.rol = 'commercial';
+    if(rolesAlta().indexOf(F.rol) < 0) F.rol = 'commercial';
     F.sup = q('#nu-sup') ? q('#nu-sup').value : '';
   }
   if(q('#nu-rol'))      q('#nu-rol').onchange   = function(){ leeAlta(); setTimeout(renderApp,0); };
