@@ -11,9 +11,11 @@
 //   El panel llama a esta función con el token de sesión del administrador.
 //   Lo primero que hace la función es comprobar quién llama y si es admin.
 //
-//   Excepción única: quien tenga el permiso «sys.alta_agentes» puede usar el
-//   ALTA, y solo para crear cuentas de Gestión Comercial (agentes). El resto
-//   de rutas —contraseñas y borrados— siguen siendo exclusivas del admin.
+//   Dos excepciones, ambas limitadas a cuentas de agente (Gestión Comercial):
+//   · quien tenga el permiso «sys.alta_agentes» puede usar el ALTA;
+//   · el Jefe de Equipo (y el admin) puede usar VER COMO para entrar en la
+//     cuenta de un agente. Queda anotado en la bitácora.
+//   Contraseñas y borrados siguen siendo exclusivos del admin.
 //
 // DESPLIEGUE
 //   supabase functions deploy admin-usuarios --project-ref ezwhkpfqnzyfulivlows
@@ -23,6 +25,7 @@
 //   POST   /admin-usuarios              alta de usuario
 //   POST   /admin-usuarios/:id/password restablecer contraseña
 //   DELETE /admin-usuarios/:id          eliminar cuenta
+//   POST   /admin-usuarios/:id/ver-como entrar en la cuenta de un agente
 // =============================================================================
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
@@ -137,7 +140,11 @@ Deno.serve(async (req) => {
   const altaDelegada = !esAdmin && activo && req.method === 'POST' && !id &&
                        quien.permisos?.['sys.alta_agentes'] === true;
 
-  if (!esAdmin && !altaDelegada) {
+  // Ver como: jefe de equipo o admin, solo sobre agentes (se comprueba abajo).
+  const verComo = activo && (quien.rol === 'admin' || quien.rol === 'manager') &&
+                  req.method === 'POST' && !!id && accion === 'ver-como';
+
+  if (!esAdmin && !altaDelegada && !verComo) {
     console.warn('Acceso denegado a admin-usuarios', { usuario: sesion.user.id, rol: quien?.rol });
     return error('Esta operación es exclusiva del administrador.', 'ROL_INSUFICIENTE', 403);
   }
@@ -161,6 +168,52 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // =====================================================================
+    // VER COMO · sesión en la cuenta de un agente
+    // Se genera un enlace mágico para el agente y se canjea aquí mismo: no
+    // se envía ningún correo y la contraseña del agente no se toca.
+    // =====================================================================
+    if (verComo) {
+      const { data: destino } = await admin.from('perfiles')
+        .select('id, nombre, apellidos, email, rol, estado, raiz').eq('id', id).single();
+      if (!destino) return error('Usuario no encontrado.', 'NO_ENCONTRADO', 404);
+      if (destino.rol !== 'commercial' || destino.raiz) {
+        return error('Solo se puede entrar en cuentas de agente (Gestión Comercial).', 'NO_ES_AGENTE', 403);
+      }
+      if (destino.id === quien.id) return error('Ya estás en tu cuenta.', 'MISMA_CUENTA', 409);
+      if (destino.estado !== 'Activo') {
+        return error('La cuenta de ese agente no está activa.', 'AGENTE_INACTIVO', 409);
+      }
+
+      const { data: enlace, error: eEnlace } = await admin.auth.admin.generateLink({
+        type: 'magiclink', email: destino.email
+      });
+      const hash = enlace?.properties?.hashed_token;
+      if (eEnlace || !hash) {
+        return error('No se ha podido abrir la cuenta: ' + (eEnlace?.message ?? ''), 'VER_COMO', 500);
+      }
+      const anonimo = createClient(URL_SB, CLAVE_PUB, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+      const { data: canje, error: eCanje } = await anonimo.auth.verifyOtp({
+        token_hash: hash, type: 'magiclink'
+      });
+      if (eCanje || !canje?.session) {
+        return error('No se ha podido abrir la cuenta: ' + (eCanje?.message ?? ''), 'VER_COMO', 500);
+      }
+
+      const nombreDestino = `${destino.nombre} ${destino.apellidos ?? ''}`.trim();
+      await anota({ id: destino.id, nombre: nombreDestino }, 'Entrada con «Ver como»',
+                  `${quien.nombre} ${quien.apellidos ?? ''}`.trim() + ' ha entrado en la cuenta del agente.');
+
+      const s = canje.session;
+      return responde({
+        sesion: { access_token: s.access_token, refresh_token: s.refresh_token,
+                  expires_in: s.expires_in, user: { id: s.user.id } },
+        agente: { id: destino.id, nombre: nombreDestino, email: destino.email }
+      });
+    }
+
     // =====================================================================
     // ALTA DE USUARIO
     // =====================================================================

@@ -1114,6 +1114,10 @@ a.btn.btn-g:hover{color:#fff}
 /* --- tabla --- */
 .u-fila.apagada td{opacity:.62}
 .u-click{cursor:pointer}
+#vc-banda{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;gap:10px;
+  align-items:center;padding:9px 12px 9px 14px;border-radius:12px;background:#7C2D12;border:1px solid #FB923C;
+  color:#FFEDD5;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:calc(100% - 32px);font-size:13px}
+#vc-banda span{min-width:0}
 .ag-ap{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:10px}
 .ag-ap.hecho{opacity:.6}
 .ag-ap.hecho .small{text-decoration:line-through}
@@ -1946,7 +1950,7 @@ function renderApp(){
   (SOPORTE.abierto ? panelAyuda() : '');
 
   qa('[data-go]').forEach(function(b){ b.onclick=function(){ S.view=b.dataset.go; S.sidebar=false; renderApp(); }; });
-  q('#logout').onclick=function(){ S.logged=false; renderLogin(); };
+  q('#logout').onclick=function(){ if(vcActivo()){ vcVolver(); return; } S.logged=false; renderLogin(); };
   q('#burger').onclick=function(){ S.sidebar=!S.sidebar; renderApp(); };
   hubEventos();
   if(q('#scrim')) q('#scrim').onclick=function(){ S.sidebar=false; renderApp(); };
@@ -1967,6 +1971,7 @@ function renderApp(){
     adminsupport:viewAdminSupportDesk, equipo:viewEquipo, mificha:viewMiFicha};
   (VIEWS[S.view]||viewDashboard)(v);
   reponerToasts();
+  vcBanda();
 }
 
 /* ==========================================================================
@@ -7443,7 +7448,9 @@ function viewUsers(v){
       '<td style="text-align:right"><div class="row" style="gap:5px;justify-content:flex-end">'+
         '<button class="btn btn-s btn-xs" data-u-ver="'+u.id+'" title="Ver cuenta">'+ic('eye',12)+' Ver</button>'+
         (u.rol==='commercial' ? '<button class="btn btn-s btn-xs" data-u-agente="'+u.id+'" title="Ficha de agente">'+
-          ic('user',12)+' Ficha</button>' : '')+
+          ic('user',12)+' Ficha</button>'+
+          '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'" title="Entrar en su cuenta">'+
+          ic('logout',12)+' Ver como</button>' : '')+
         '<button class="btn btn-s btn-xs" data-u-clave="'+u.id+'" title="Restablecer contraseña">'+ic('refresh',12)+'</button>'+
         '<button class="btn btn-s btn-xs" data-u-goo="'+u.id+'" title="Permitir o revocar Google">'+googleG(12)+'</button>'+
         (u.rol==='admin' ? '' :
@@ -7804,6 +7811,8 @@ function eventosUsuarios(v){
   qa('[data-u-ver]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation();
     USU.det = b.dataset.uVer; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
+  qa('[data-vercomo]').forEach(function(b){ b.onclick = function(e){
+    e.stopPropagation(); vcEntra(usuarioPorId(b.dataset.vercomo)); }; });
   qa('[data-u-agente]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation(); S.view = 'equipo'; agAbre(b.dataset.uAgente); }; });
   /* Un clic en cualquier parte de la fila abre la cuenta; los botones, el
@@ -8437,6 +8446,7 @@ function sbEntrar(email, password){
         ? 'Credenciales incorrectas. Si no recuerdas tu acceso, avisa al administrador.'
         : sbMensaje(r)};
     }
+    vcOlvida();
     return {ok:true};
   });
 }
@@ -8452,11 +8462,68 @@ function sbRefresca(){
 }
 
 function sbSalir(){
+  if(vcActivo()){ vcVolver(); return new Promise(function(){}); }
   var fin = SB.sesion
     ? sbFetch('/auth/v1/logout', {method:'POST'}).then(function(){ return true; },
                                                        function(){ return true; })
     : Promise.resolve(true);
   return fin.then(function(){ sbBorraSesion(); return true; });
+}
+
+
+/* ==========================================================================
+   VER COMO · el Jefe de Equipo entra en la cuenta de uno de sus agentes
+   La Edge Function admin-usuarios comprueba quién lo pide y que la cuenta
+   sea de agente, y devuelve una sesión del agente. Aquí se guarda aparte la
+   sesión propia para poder volver, y se recarga el panel: todo lo que se ve
+   a partir de ahí es exactamente lo que ve el agente, con sus permisos.
+   ========================================================================== */
+var VC_LS = 'labs24k.vercomo';
+function vcActivo(){ return !!sbLeeLocal(VC_LS); }
+function vcOlvida(){ try { localStorage.removeItem(VC_LS); } catch(e){} }
+
+function vcEntra(u){
+  if(!u) return;
+  if(SB.estado !== 'conectado'){ toast('«Ver como» necesita conexión con Supabase.'); return; }
+  if(vcActivo()){ toast('Ya estás dentro de otra cuenta. Vuelve primero a la tuya.'); return; }
+  if(!window.confirm('Vas a entrar en la cuenta de '+u.n+'.\n\nVerás exactamente lo que ve el agente, '+
+     'y lo que hagas quedará hecho en su nombre. La entrada queda anotada en la bitácora.\n\n¿Continuar?')) return;
+  toast('Abriendo la cuenta de '+u.n+'...');
+  sbFuncion('/' + u.id + '/ver-como', 'POST', {}).then(function(r){
+    if(!r.ok || !r.datos || !r.datos.sesion){ toast(sbMensaje(r)); return; }
+    var propia = SB.sesion;
+    sbGuardaLocal(VC_LS, {original:propia, jefe:S.name || '', agente:r.datos.agente.nombre, desde:Date.now()});
+    if(!sbGuardaSesion(r.datos.sesion)){
+      vcOlvida(); SB.sesion = propia; sbGuardaLocal(SB_LS_SES, propia);
+      toast('No se ha podido abrir la cuenta.'); return;
+    }
+    location.reload();
+  });
+}
+
+/* Cierra SOLO la sesión abierta con «Ver como» (scope=local): las sesiones
+   que el agente tenga abiertas en sus dispositivos no se tocan. */
+function vcVolver(){
+  var vc = sbLeeLocal(VC_LS);
+  var cierra = SB.sesion ? sbFetch('/auth/v1/logout?scope=local', {method:'POST'}) : Promise.resolve(true);
+  function fin(){
+    vcOlvida();
+    if(vc && vc.original){ SB.sesion = vc.original; sbGuardaLocal(SB_LS_SES, vc.original); }
+    else sbBorraSesion();
+    location.reload();
+  }
+  cierra.then(fin, fin);
+}
+
+function vcBanda(){
+  var b = document.getElementById('vc-banda');
+  var vc = S.logged ? sbLeeLocal(VC_LS) : null;
+  if(!vc){ if(b) b.parentNode.removeChild(b); return; }
+  if(!b){ b = document.createElement('div'); b.id = 'vc-banda'; document.body.appendChild(b); }
+  b.innerHTML = ic('eye',15)+'<span>Estás en la cuenta de <strong>'+esc(vc.agente)+'</strong>'+
+    (vc.jefe ? ' como '+esc(vc.jefe) : '')+'. Lo que hagas queda hecho en su nombre.</span>'+
+    '<button class="btn btn-p btn-xs" id="vc-volver">Volver a mi cuenta</button>';
+  q('#vc-volver').onclick = vcVolver;
 }
 
 /* --------------------------- LECTURA Y ESCRITURA ------------------------ */
@@ -8610,6 +8677,7 @@ function sbCargaDatos(){
 
 /* Registra la sesión abierta y, si es la cuenta de raíz, el acceso forense. */
 function sbRegistraEntrada(){
+  if(vcActivo()) return Promise.resolve(true);
   var tareas = [
     sbInsert('sesiones', {usuario_id: SB.perfil.id, dispositivo: navegadorActual(),
                           ubicacion: ''}),
@@ -9100,7 +9168,9 @@ function agFichaModal(){
         '</div>'+
         '<div class="tiny muted trunc">'+esc(u.mail)+' · '+esc(u.tel || '')+
           ' · relación <span class="mono">'+esc(u.rel)+'</span></div></div></div>'+
-      '<button class="icon-btn" id="ag-x">'+ic('x',16)+'</button></div>'+
+      '<div class="row" style="gap:8px"><button class="btn btn-s btn-xs" data-vercomo="'+u.id+'">'+
+        ic('logout',12)+' Ver como</button>'+
+      '<button class="icon-btn" id="ag-x">'+ic('x',16)+'</button></div></div>'+
     '<div class="ft-body"><div class="ft-side">'+agNav()+'</div>'+
       '<div class="ft-main">'+agCuerpo(u, true)+'</div></div>'+
     '<div class="ft-foot"><span class="tiny muted">Área privada: la ven este agente y su dirección.</span>'+
@@ -9167,7 +9237,10 @@ function viewEquipo(v){
         ? esc(Number(f.objetivo_mensual).toLocaleString('es-ES'))+' €' : '<span class="muted">sin fijar</span>')+'</td>'+
       '<td>'+chipEstado(u.est)+'</td>'+
       '<td>'+(AG.fichas[u.id] ? '<span class="chip green">Al día</span>' : '<span class="chip amber">Por crear</span>')+'</td>'+
-      '<td style="text-align:right"><button class="btn btn-s btn-xs" data-ag-ver="'+u.id+'">'+ic('eye',12)+' Abrir ficha</button></td>'+
+      '<td style="text-align:right"><div class="row" style="gap:5px;justify-content:flex-end">'+
+        '<button class="btn btn-s btn-xs" data-ag-ver="'+u.id+'">'+ic('eye',12)+' Abrir ficha</button>'+
+        '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'" title="Entrar en su cuenta">'+
+          ic('logout',12)+' Ver como</button></div></td>'+
     '</tr>';
   }).join('') || '<tr><td colspan="6" class="muted" style="text-align:center;padding:26px">'+
     (AG.cargando ? 'Cargando fichas...' : todos.length ? 'Ningún agente coincide con la búsqueda.'
@@ -9201,6 +9274,8 @@ function viewEquipo(v){
   q('#ag-find').onchange = function(){ AG.filtro = this.value; setTimeout(renderApp,0); };
   if(q('#ag-recarga')) q('#ag-recarga').onclick = function(){
     AG.cargado = false; agCargaLista(); if(AG.det) agCargaDetalle(AG.det); };
+  qa('[data-vercomo]').forEach(function(b){ b.onclick = function(e){
+    e.stopPropagation(); vcEntra(usuarioPorId(b.dataset.vercomo)); }; });
   qa('[data-ag-ver]').forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); agAbre(b.dataset.agVer); }; });
   qa('[data-ag-fila]').forEach(function(tr){ tr.onclick = function(e){
     if(e.target.closest('button, select, input, a')) return;
