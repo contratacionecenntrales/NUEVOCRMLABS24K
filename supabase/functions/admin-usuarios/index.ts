@@ -28,6 +28,7 @@
 //   POST   /admin-usuarios/:id/password restablecer contraseña
 //   DELETE /admin-usuarios/:id          eliminar cuenta
 //   POST   /admin-usuarios/:id/ver-como entrar en la cuenta de alguien a tu cargo
+//   POST   /admin-usuarios/:id/correo   cambiar el correo (acceso y ficha a la vez)
 // =============================================================================
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
@@ -315,6 +316,37 @@ Deno.serve(async (req) => {
 
       // La contraseña en claro sale UNA vez, para entregarla en mano.
       return responde({ usuario: perfil, passwordInicial: password }, 201);
+    }
+
+    // =====================================================================
+    // CAMBIAR EL CORREO · en la identidad de Auth y en la ficha a la vez
+    // Si solo se cambiara en perfiles, la persona seguiría entrando con el
+    // correo antiguo y su ficha diría otro: por eso va por aquí.
+    // =====================================================================
+    if (req.method === 'POST' && id && accion === 'correo') {
+      const b = await req.json().catch(() => ({}));
+      const nuevo = normalizaEmail(b.email ?? '');
+      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(nuevo)) return error('Correo no válido.', 'EMAIL_INVALIDO');
+
+      const { data: destino } = await admin.from('perfiles')
+        .select('id, nombre, apellidos, email, raiz').eq('id', id).single();
+      if (!destino) return error('Usuario no encontrado.', 'NO_ENCONTRADO', 404);
+      if (destino.raiz) return error('El correo de la cuenta de raíz no se cambia.', 'RAIZ_EMAIL_FIJO', 409);
+      if (destino.email === nuevo) return responde({ ok: true, email: nuevo });
+
+      const { data: yaExiste } = await admin.from('perfiles').select('id').eq('email', nuevo).maybeSingle();
+      if (yaExiste) return error('Ya existe una cuenta con ese correo.', 'EMAIL_DUPLICADO', 409);
+
+      const { error: eAuth } = await admin.auth.admin.updateUserById(id, { email: nuevo, email_confirm: true });
+      if (eAuth) return error('No se ha podido cambiar el correo: ' + eAuth.message, 'CORREO_AUTH', 500);
+      const { error: eFicha } = await admin.from('perfiles').update({ email: nuevo }).eq('id', id);
+      if (eFicha) {
+        await admin.auth.admin.updateUserById(id, { email: destino.email, email_confirm: true });
+        return error('No se ha podido cambiar el correo: ' + eFicha.message, 'CORREO_FICHA', 500);
+      }
+      await anota({ id, nombre: `${destino.nombre} ${destino.apellidos ?? ''}`.trim() },
+                  'Correo cambiado', `${destino.email} → ${nuevo}`);
+      return responde({ ok: true, email: nuevo });
     }
 
     // =====================================================================

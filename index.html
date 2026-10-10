@@ -7535,8 +7535,13 @@ function viewUsers(v){
         '</div></div></div></td>'+
       '<td class="tiny muted nowrap">'+esc(u.tel || '—')+
         (u.ext ? '<div class="tiny" style="color:var(--txt-3)">ext. '+esc(u.ext)+'</div>' : '')+'</td>'+
-      '<td><span class="chip '+(u.rol==='admin'?'violet':u.rol==='manager'?'blue':'')+'">'+
-        esc(etiquetaRol(u))+'</span></td>'+
+      '<td class="tiny">'+(u.emp ? '<div class="w trunc" style="max-width:170px">'+esc(u.emp)+'</div>' : '<span class="muted">—</span>')+
+        (u.cif ? '<div class="tiny mono" style="color:var(--txt-3)">'+esc(u.cif)+'</div>' : '')+'</td>'+
+      '<td>'+(esRaiz(u)
+        ? '<span class="chip violet">'+esc(etiquetaRol(u))+'</span>'
+        : '<select class="inp u-sel sel-sup" data-u-rol="'+u.id+'">'+Object.keys(ROLES).map(function(k){
+            return '<option value="'+k+'"'+(u.rol===k?' selected':'')+'>'+esc(ROLES[k].label)+'</option>'; }).join('')+
+          '</select>')+'</td>'+
       '<td>'+selSuperior(u)+'</td>'+
       '<td>'+(u.google
         ? '<span class="row" style="gap:6px">'+googleG(14)+'<span class="tiny">Autorizado</span></span>'
@@ -7559,7 +7564,7 @@ function viewUsers(v){
           '<button class="btn btn-s btn-xs" data-u-del="'+u.id+'" title="Eliminar cuenta">'+ic('x',12)+'</button>')+
         (esRaiz(u) ? '<span class="candado" title="'+esc(vetoRaiz(u,'borrar'))+'">'+ic('shield',12)+'</span>' : '')+
       '</div></td></tr>';
-  }).join('') || '<tr><td colspan="8" class="muted" style="text-align:center;padding:26px">'+
+  }).join('') || '<tr><td colspan="9" class="muted" style="text-align:center;padding:26px">'+
                  'Ningún usuario coincide con la búsqueda.</td></tr>';
 
   var kpis = [
@@ -7608,7 +7613,7 @@ function viewUsers(v){
 
   '<div class="card" style="padding:0;overflow:hidden">'+
     '<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
-      '<th>Usuario</th><th>Teléfono</th><th>Rol</th><th>Superior</th><th>Autenticación</th><th>Estado</th>'+
+      '<th>Usuario</th><th>Teléfono</th><th>Empresa / CIF</th><th>Rol</th><th>Superior</th><th>Autenticación</th><th>Estado</th>'+
       '<th>Último acceso</th><th></th></tr></thead><tbody>'+filas+'</tbody></table></div></div>'+
 
   raizHTML()+
@@ -7924,6 +7929,23 @@ function eventosUsuarios(v){
     USU.det = b.dataset.uVer; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
   qa('[data-vercomo]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation(); vcEntra(usuarioPorId(b.dataset.vercomo)); }; });
+  qa('[data-u-rol]').forEach(function(sel){ sel.onchange = function(){
+    var u = usuarioPorId(sel.dataset.uRol), ant = u.rol, antPerms = u.perms, nuevo = sel.value;
+    var yo = yoUsuario();
+    if(yo && yo.id === u.id){ toast('No puedes cambiar tu propio rol.'); setTimeout(renderApp,0); return; }
+    if(ant === 'admin' && nuevo !== 'admin' && adminsActivos() <= 1){
+      toast('No puedes dejar el sistema sin ningún administrador activo.'); setTimeout(renderApp,0); return; }
+    if(!window.confirm('¿Cambiar el rol de '+u.n+' a '+ROLES[nuevo].label+'?\n\n'+
+       'Sus permisos se reescriben con los de ese rol. Si su superior ya no tiene más rango, se le quita.')){
+      setTimeout(renderApp,0); return; }
+    u.rol = nuevo; u.perms = permisosDeRol(nuevo);
+    if(u.sup){ var s0 = usuarioPorId(u.sup); if(s0 && rangoU(s0) <= rangoU(u)) u.sup = null; }
+    sbGuardaUsuario(u).then(function(r){
+      if(!r.ok){ u.rol = ant; u.perms = antPerms; toast(r.mensaje); setTimeout(renderApp,0); return; }
+      auditar(u, 'Rol cambiado', ROLES[ant].label+' → '+ROLES[nuevo].label);
+      toast(u.n+' · ahora es '+ROLES[nuevo].label+'.');
+      setTimeout(renderApp,0);
+    }); }; });
   qa('[data-u-sup]').forEach(function(sel){ sel.onchange = function(){
     var u = usuarioPorId(sel.dataset.uSup), ant = u.sup, nuevo = sel.value || null;
     if(!u.conSup && SB.estado === 'conectado'){
@@ -8058,6 +8080,11 @@ function fichaInfo(u){
     '<div class="field"><label class="f">Extensión</label>'+
       '<input class="inp" id="fi-ext" value="'+esc(u.ext)+'" placeholder="—"></div></div>'+
   '<div class="grid g-2">'+
+    '<div class="field"><label class="f">Empresa</label>'+
+      '<input class="inp" id="fi-emp" value="'+esc(u.emp||'')+'" placeholder="Ej. Evolvix Global - Gijón"></div>'+
+    '<div class="field"><label class="f">CIF</label>'+
+      '<input class="inp mono" id="fi-cif" value="'+esc(u.cif||'')+'" placeholder="B12345678"></div></div>'+
+  '<div class="grid g-2">'+
     '<div class="field"><label class="f">Estado de la cuenta</label>'+
       (esRaiz(u)
         ? '<input class="inp" value="Activo · permanente" readonly>'+
@@ -8099,7 +8126,12 @@ function fichaPermisos(u){
             '<span>'+esc(vetoRaiz(u,'rol'))+'</span></div>'
         : '<select class="inp" id="fp-rol">'+Object.keys(ROLES).map(function(k){
             return '<option value="'+k+'"'+(u.rol===k?' selected':'')+'>'+ROLES[k].label+'</option>'; }).join('')+
-          '</select><div class="tiny muted" style="margin-top:6px">'+esc(ROLES[u.rol].desc)+'</div>')+'</div>'+
+          '</select><div class="tiny muted" style="margin-top:6px">'+esc(ROLES[u.rol].desc)+'</div>')+
+      (raiz ? '' : '<label class="f" style="margin-top:12px">Superior (jefe de equipo / responsable)</label>'+
+        '<select class="inp" id="fp-sup"><option value="">Sin superior</option>'+
+        superioresPosibles(u).map(function(x){
+          return '<option value="'+x.id+'"'+(u.sup===x.id?' selected':'')+'>'+esc(x.n)+' · '+esc(etiquetaRol(x))+'</option>';
+        }).join('')+'</select>')+'</div>'+
     '<div class="field"><label class="f">Permisos fuera del rol</label>'+
       '<div class="row" style="gap:9px"><span class="chip '+(excepciones?'amber':'green')+'" style="flex:0 0 auto">'+
         (excepciones ? excepciones+' excepción'+(excepciones>1?'es':'') : 'Sin excepciones')+'</span>'+
@@ -8269,6 +8301,8 @@ function leeFicha(){
     // En la cuenta de raíz estos dos campos no se dibujan: se dejan como están.
     if(q('#fi-mail')) u.mail = v('#fi-mail');
     if(q('#fi-est'))  u.est  = v('#fi-est');
+    if(q('#fi-emp'))  u.emp  = v('#fi-emp');
+    if(q('#fi-cif'))  u.cif  = v('#fi-cif');
   }
   if(q('#fl-ext')){
     u.pref.llam.ext = v('#fl-ext'); u.pref.llam.desvio = v('#fl-des');
@@ -8301,7 +8335,7 @@ function detalleEventos(){
     e.stopPropagation(); copia(b.dataset.cp, 'Copiado al portapapeles.'); }; });
 
   /* --- información --- */
-  ['#fi-nom','#fi-ape','#fi-mail','#fi-pre','#fi-num','#fi-ext'].forEach(function(id){
+  ['#fi-nom','#fi-ape','#fi-mail','#fi-pre','#fi-num','#fi-ext','#fi-emp','#fi-cif'].forEach(function(id){
     if(q(id)) q(id).onchange = function(){ leeFicha(); }; });
   if(q('#fi-est')) q('#fi-est').onchange = function(){ refrescaFicha(); };
 
@@ -8319,8 +8353,10 @@ function detalleEventos(){
     leeFicha(); USU.draft.avatar = null; renderApp(); };
 
   /* --- permisos --- */
+  if(q('#fp-sup')) q('#fp-sup').onchange = function(){ u.sup = this.value || null; };
   if(q('#fp-rol')) q('#fp-rol').onchange = function(){
     u.rol = this.value; u.perms = permisosDeRol(u.rol);
+    if(u.sup){ var s0 = usuarioPorId(u.sup); if(s0 && rangoU(s0) <= rangoU(u)) u.sup = null; }
     toast('Permisos reescritos con los de fábrica del rol '+ROLES[u.rol].label+'.');
     setTimeout(renderApp,0); };
   if(q('#fp-reset')) q('#fp-reset').onclick = function(){
@@ -8394,6 +8430,12 @@ function detalleEventos(){
     if(real.n !== (u.nom+' '+u.ape).trim()) cambios.push('nombre');
     if(real.mail !== String(u.mail).toLowerCase().trim()) cambios.push('correo');
     if(real.rol !== u.rol) cambios.push('rol → '+ROLES[u.rol].label);
+    if((real.sup||null) !== (u.sup||null)){ var sN = u.sup ? usuarioPorId(u.sup) : null;
+      cambios.push('superior → '+(sN ? sN.n : 'ninguno')); }
+    if((real.emp||'') !== String(u.emp||'').trim() || (real.cif||'') !== String(u.cif||'').trim().toUpperCase())
+      cambios.push('empresa / CIF');
+    if(u.cif && !/^[A-Za-z0-9-]{0,20}$/.test(String(u.cif).trim())){
+      toast('El CIF solo admite letras, números y guiones.'); return; }
     if(real.est !== u.est) cambios.push('estado → '+u.est);
     if(real.google !== u.google) cambios.push(u.google ? 'Google autorizado' : 'Google revocado');
     if(real.dobleF !== u.dobleF) cambios.push(u.dobleF ? 'doble factor activado' : 'doble factor desactivado');
@@ -8402,6 +8444,15 @@ function detalleEventos(){
     var dif = todasLasClaves().filter(function(k){ return !!real.perms[k] !== !!u.perms[k]; });
     if(dif.length) cambios.push(dif.length+' permiso'+(dif.length>1?'s':'')+' modificado'+(dif.length>1?'s':''));
 
+    var mailNuevo = String(u.mail).toLowerCase().trim();
+    /* El correo es también el usuario de acceso: con Supabase conectado se
+       cambia primero en la identidad (Edge Function) y después en la ficha. */
+    var correo = (real.mail !== mailNuevo && SB.estado === 'conectado' && !esRaiz(real))
+      ? sbFuncion('/' + real.id + '/correo', 'POST', {email: mailNuevo}).then(function(r){
+          return r.ok ? {ok:true} : {ok:false, mensaje: sbMensaje(r)}; })
+      : Promise.resolve({ok:true});
+    correo.then(function(rc){
+    if(!rc.ok){ toast(rc.mensaje); return; }
     real.nom = u.nom.trim(); real.ape = String(u.ape||'').trim();
     real.n = (real.nom+' '+real.ape).trim();
     real.mail = String(u.mail).toLowerCase().trim();
@@ -8410,6 +8461,7 @@ function detalleEventos(){
     real.est = u.est; real.rol = u.rol; real.google = u.google; real.dobleF = u.dobleF;
     real.cambiar = u.cambiar; real.avatar = u.avatar; real.tok = u.tok;
     real.perms = u.perms; real.pref = u.pref;
+    real.sup = u.sup || null; real.emp = String(u.emp||'').trim(); real.cif = String(u.cif||'').trim().toUpperCase();
     real.ses = (real.est === 'Activo') ? u.ses : [];
 
     /* Con Supabase conectado, la base de datos manda: si un disparador
@@ -8422,6 +8474,7 @@ function detalleEventos(){
       USU.det = null; USU.draft = null;
       toast(cambios.length ? 'Ficha de '+real.n+' actualizada.' : 'No había cambios que guardar.');
       renderApp();
+    });
     });
   };
 }
@@ -8693,6 +8746,7 @@ function deFila(f, i){
     avatar: f.avatar_url || null, tok: f.api_token || '',
     modvis: Array.isArray(f.modulos_visibles) ? f.modulos_visibles : null,
     sup: f.superior_id || null, conSup: Object.prototype.hasOwnProperty.call(f, 'superior_id'),
+    emp: f.empresa || '', cif: f.cif || '', conEmp: Object.prototype.hasOwnProperty.call(f, 'empresa'),
     rolPersId: f.rol_personalizado_id || null,
     alta: f.alta ? new Date(f.alta).toLocaleDateString('es-ES') : '',
     ultMs: f.ultimo_acceso ? new Date(f.ultimo_acceso).getTime() : null,
@@ -8749,6 +8803,7 @@ function aFila(u){
   /* Solo si la base ya tiene la columna (14-superiores.sql): si no, el
      guardado entero fallaría por un campo desconocido. */
   if(u.conSup) fila.superior_id = u.sup || null;
+  if(u.conEmp){ fila.empresa = String(u.emp || '').trim(); fila.cif = String(u.cif || '').trim().toUpperCase(); }
   return fila;
 }
 
