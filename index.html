@@ -7501,6 +7501,19 @@ function rolesEditables(u){
   var r = rolesAlta();
   return r.indexOf(u.rol) > -1 ? r : [u.rol].concat(r);
 }
+/* Abre la ficha de una cuenta. Si es un agente, empieza por su ficha
+   avanzada («Resumen y seguimiento»: objetivos, plan, tareas y notas). */
+function usuAbre(id){
+  var u = usuarioPorId(id); if(!u) return;
+  USU.det = id; USU.verTok = false; USU.draft = null;
+  USU.tab = u.rol === 'commercial' ? 'ag' : 'info';
+  if(u.rol === 'commercial'){
+    AG.det = id; AG.enEquipo = false; AG.tab = 'ficha'; AG.borrador = null;
+    AG.nuevo = {tipo: agDirijo() ? 'tarea' : 'nota', titulo:'', texto:'', fecha:''};
+    agCargaDetalle(id);
+  }
+  renderApp();
+}
 function selSuperior(u){
   if(esRaiz(u)) return '<span class="tiny muted">— (lo más alto)</span>';
   var ops = superioresPosibles(u);
@@ -7955,7 +7968,7 @@ function eventosUsuarios(v){
 
   qa('[data-u-ver]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation();
-    USU.det = b.dataset.uVer; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
+    usuAbre(b.dataset.uVer); }; });
   qa('[data-vercomo]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation(); vcEntra(usuarioPorId(b.dataset.vercomo)); }; });
   qa('[data-u-rol]').forEach(function(sel){ sel.onchange = function(){
@@ -7988,12 +8001,12 @@ function eventosUsuarios(v){
       setTimeout(renderApp,0);
     }); }; });
   qa('[data-u-agente]').forEach(function(b){ b.onclick = function(e){
-    e.stopPropagation(); S.view = 'equipo'; agAbre(b.dataset.uAgente); }; });
+    e.stopPropagation(); usuAbre(b.dataset.uAgente); }; });
   /* Un clic en cualquier parte de la fila abre la cuenta; los botones, el
      selector de estado y los de copiar siguen haciendo lo suyo. */
   qa('[data-u-fila]').forEach(function(tr){ tr.onclick = function(e){
     if(e.target.closest('button, select, input, a, .cp, .candado')) return;
-    USU.det = tr.dataset.uFila; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
+    usuAbre(tr.dataset.uFila); }; });
 }
 
 /* ==========================================================================
@@ -8038,7 +8051,9 @@ function detalleHTML(){
   if(!USU.draft || USU.draft.id !== real.id) USU.draft = clonUsuario(real);
   var u = USU.draft;
 
-  var nav = TABS_U.map(function(t){
+  var tabs = (real.rol === 'commercial' ? [{k:'ag', n:'Resumen y seguimiento', i:'trend'}] : []).concat(TABS_U);
+  if(USU.tab === 'ag' && real.rol !== 'commercial') USU.tab = 'info';
+  var nav = tabs.map(function(t){
     return '<button class="ft-nav'+(USU.tab===t.k?' on':'')+'" data-ftab="'+t.k+'">'+
       ic(t.i,15)+'<span>'+t.n+'</span></button>'; }).join('');
 
@@ -8047,7 +8062,8 @@ function detalleHTML(){
     'están fijados por el sistema. Lo demás —datos de contacto, foto, preferencias y credenciales— '+
     'se edita con normalidad.</span></div>' : '';
 
-  var cuerpo = USU.tab==='perm'  ? fichaPermisos(u)   :
+  var cuerpo = USU.tab==='ag'    ? fichaResumenAgente(real) :
+               USU.tab==='perm'  ? fichaPermisos(u)   :
                USU.tab==='llam'  ? fichaLlamadas(u)   :
                USU.tab==='disp'  ? fichaDisponibilidad(u) :
                USU.tab==='cal'   ? fichaCalendario(u) :
@@ -8071,6 +8087,40 @@ function detalleHTML(){
         '<button class="btn btn-s" id="ft-cancel">Descartar</button>'+
         '<button class="btn btn-p" id="ft-save">'+ic('save',15)+' Guardar cambios</button></div>'+
     '</div></div></div>';
+}
+
+/* -------------------- 0 · RESUMEN Y SEGUIMIENTO (agentes) ----------------
+   La ficha avanzada del agente dentro de su ficha de cuenta: la misma que en
+   «Fichas de Agentes» y la que él ve en «Mi Ficha». Tiene su propio botón de
+   guardar; «Guardar cambios» de abajo es para los datos de la cuenta. */
+function fichaResumenAgente(u){
+  if(AG.det !== u.id){
+    AG.det = u.id; AG.tab = 'ficha'; AG.borrador = null;
+    AG.nuevo = {tipo: agDirijo() ? 'tarea' : 'nota', titulo:'', texto:'', fecha:''};
+    agCargaDetalle(u.id);
+  }
+  AG.enEquipo = false;
+  var seg = AG.seg[u.id] || [], f = agFicha(u.id);
+  var pend = seg.filter(function(e){ return e.tipo==='tarea' && !e.hecho; }).length;
+  var hechas = seg.filter(function(e){ return e.tipo==='tarea' && e.hecho; }).length;
+  var obj = (f.objetivo_mensual !== '' && f.objetivo_mensual !== null && f.objetivo_mensual !== undefined)
+    ? Number(f.objetivo_mensual).toLocaleString('es-ES')+' €' : 'sin fijar';
+  var kpis = [['Objetivo mensual', obj, 'target', 'violet'],
+              ['Tareas pendientes', String(pend), 'alert', 'amber'],
+              ['Tareas hechas', String(hechas), 'check', 'green'],
+              ['Apuntes', String(seg.length), 'clock', 'blue']];
+  var sub = TABS_AG.map(function(t){
+    return '<button class="btn btn-s btn-xs'+(AG.tab===t.k?' on':'')+'" data-agtab="'+t.k+'"'+
+      (AG.tab===t.k?' style="border-color:var(--blue);color:#99F6E4"':'')+'>'+ic(t.i,12)+' '+t.n+'</button>'; }).join('');
+  var pie = agPie(true);
+  return '<h4 class="ft-t">Resumen y seguimiento</h4>'+
+    '<div class="grid g-4" style="margin-bottom:14px">'+kpis.map(function(k){
+      return '<div class="card kpi" style="padding:12px"><div class="row" style="justify-content:space-between">'+
+        '<div class="lbl">'+k[0]+'</div><div class="ico-box '+k[3]+'" style="width:28px;height:28px">'+ic(k[2],14)+'</div></div>'+
+        '<div class="val" style="font-size:20px">'+esc(k[1])+'</div></div>'; }).join('')+'</div>'+
+    '<div class="row" style="gap:6px;margin-bottom:14px;flex-wrap:wrap">'+sub+'</div>'+
+    agCuerpo(u, true)+
+    (pie ? '<div class="row" style="justify-content:flex-end;gap:10px;margin-top:14px">'+pie+'</div>' : '');
 }
 
 /* ------------------------- 1 · INFORMACIÓN ------------------------------ */
@@ -8358,7 +8408,8 @@ function detalleEventos(){
   var u = USU.draft;
 
   qa('[data-ftab]').forEach(function(b){ b.onclick = function(){
-    leeFicha(); USU.tab = b.dataset.ftab; renderApp(); }; });
+    leeFicha(); agLeeBorrador(); USU.tab = b.dataset.ftab; renderApp(); }; });
+  if(USU.tab === 'ag') agEventos(USU.det);
   q('#ft-x').onclick = function(){ USU.det = null; USU.draft = null; renderApp(); };
   q('#ft-cancel').onclick = function(){ USU.det = null; USU.draft = null;
     toast('Cambios descartados.'); renderApp(); };
@@ -9224,7 +9275,7 @@ function agCargaDetalle(id){
 }
 
 function agAbre(id){
-  AG.det = id; AG.tab = 'ficha'; AG.borrador = null; AG.error = '';
+  AG.det = id; AG.enEquipo = true; AG.tab = 'ficha'; AG.borrador = null; AG.error = '';
   AG.nuevo = {tipo: agDirijo() ? 'tarea' : 'nota', titulo:'', texto:'', fecha:''};
   renderApp();
   agCargaDetalle(id);
@@ -9408,7 +9459,7 @@ function agPie(puedeEditar){
 }
 
 function agFichaModal(){
-  if(!AG.det) return '';
+  if(!AG.det || !AG.enEquipo) return '';
   var u = usuarioPorId(AG.det); if(!u){ AG.det = null; return ''; }
   var pend = (AG.seg[u.id] || []).filter(function(e){ return e.tipo==='tarea' && !e.hecho; }).length;
   return '<div class="ov" data-ov="ag-detalle"><div class="modal ficha">'+
@@ -9533,7 +9584,7 @@ function viewEquipo(v){
   qa('[data-ag-fila]').forEach(function(tr){ tr.onclick = function(e){
     if(e.target.closest('button, select, input, a')) return;
     agAbre(tr.dataset.agFila); }; });
-  if(AG.det) agEventos(AG.det);
+  if(AG.det && AG.enEquipo) agEventos(AG.det);
   vchEventos();
 }
 
