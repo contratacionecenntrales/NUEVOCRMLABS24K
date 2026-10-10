@@ -1114,6 +1114,13 @@ a.btn.btn-g:hover{color:#fff}
 /* --- tabla --- */
 .u-fila.apagada td{opacity:.62}
 .u-click{cursor:pointer}
+.ag-ap{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:10px}
+.ag-ap.hecho{opacity:.6}
+.ag-ap.hecho .small{text-decoration:line-through}
+.ag-chk{width:24px;height:24px;flex:0 0 24px;border-radius:7px;border:1.5px solid #3b4a63;background:transparent;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:#04231A}
+.ag-chk.on{background:var(--blue);border-color:var(--blue)}
+.ag-mia{min-height:420px}
 .u-click:hover td{background:rgba(255,255,255,.035)}
 .sel-est{background:var(--card-2);border:1px solid var(--line);border-radius:20px;color:var(--txt-2);
   font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
@@ -1711,6 +1718,7 @@ var MENU = [
   {id:'calendar',    label:'Calendario y Citas',         icon:'calendar',  sec:'General',   roles:['admin','manager','commercial'], n:3},
   {id:'academy',     label:'Academia y Cursos',          icon:'book',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
   {id:'mission',     label:'Mission Control',            icon:'spark',     sec:'General',   roles:['admin','manager']},
+  {id:'mificha',     label:'Mi Ficha',                   icon:'user',      sec:'General',   roles:['commercial']},
   {id:'contactos',   label:'Contactos',                  icon:'user',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
   {id:'resources',   label:'Centro de Recursos',         icon:'file',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
   {id:'support',     label:'Soporte y Tickets',          icon:'help',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
@@ -1721,6 +1729,7 @@ var MENU = [
   {id:'ranking',     label:'Ranking de la Red',          icon:'trend',     sec:'Comercial', roles:['admin','manager','commercial']},
   {id:'funnels',     label:'Embudos de Venta',           icon:'filter',    sec:'Comercial', roles:['admin','manager','commercial']},
   {id:'audits',      label:'Auditorías IA',              icon:'search',    sec:'Comercial', roles:['admin','manager','commercial']},
+  {id:'equipo',      label:'Fichas de Agentes',          icon:'users',     sec:'Comercial', roles:['admin','manager']},
   {id:'clients',     label:'Clientes Activos',           icon:'users',     sec:'Comercial', roles:['admin','manager','commercial','backoffice']},
   {id:'contracts',   label:'Contratos y Facturación',    icon:'file',      sec:'Operaciones', roles:['admin','manager','backoffice'], n:2},
   {id:'backoffice',  label:'Back Office y Trámites',     icon:'case',      sec:'Operaciones', roles:['admin','backoffice','manager']},
@@ -1955,7 +1964,7 @@ function renderApp(){
     backoffice:viewBackoffice, voice_wa:viewVoice, integrations:viewIntegrations,
     interviews:viewInterviews, users:viewUsers, settings:viewSettings, contactos:viewContactos,
     rolesadmin:viewRolesAdmin, resources:viewResources, support:viewSupport,
-    adminsupport:viewAdminSupportDesk};
+    adminsupport:viewAdminSupportDesk, equipo:viewEquipo, mificha:viewMiFicha};
   (VIEWS[S.view]||viewDashboard)(v);
   reponerToasts();
 }
@@ -7433,6 +7442,8 @@ function viewUsers(v){
       '<td class="tiny muted nowrap">'+esc(haceRel(u.ultMs))+'</td>'+
       '<td style="text-align:right"><div class="row" style="gap:5px;justify-content:flex-end">'+
         '<button class="btn btn-s btn-xs" data-u-ver="'+u.id+'" title="Ver cuenta">'+ic('eye',12)+' Ver</button>'+
+        (u.rol==='commercial' ? '<button class="btn btn-s btn-xs" data-u-agente="'+u.id+'" title="Ficha de agente">'+
+          ic('user',12)+' Ficha</button>' : '')+
         '<button class="btn btn-s btn-xs" data-u-clave="'+u.id+'" title="Restablecer contraseña">'+ic('refresh',12)+'</button>'+
         '<button class="btn btn-s btn-xs" data-u-goo="'+u.id+'" title="Permitir o revocar Google">'+googleG(12)+'</button>'+
         (u.rol==='admin' ? '' :
@@ -7793,6 +7804,8 @@ function eventosUsuarios(v){
   qa('[data-u-ver]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation();
     USU.det = b.dataset.uVer; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
+  qa('[data-u-agente]').forEach(function(b){ b.onclick = function(e){
+    e.stopPropagation(); S.view = 'equipo'; agAbre(b.dataset.uAgente); }; });
   /* Un clic en cualquier parte de la fila abre la cuenta; los botones, el
      selector de estado y los de copiar siguen haciendo lo suyo. */
   qa('[data-u-fila]').forEach(function(tr){ tr.onclick = function(e){
@@ -8823,6 +8836,409 @@ function sbBorraUsuario(id){
 function sbRecarga(){
   if(SB.estado !== 'conectado') return Promise.resolve(false);
   return sbCargaDatos().then(function(){ renderApp(); return true; });
+}
+
+/* ==========================================================================
+   FICHAS DE AGENTE · área privada de gestión de cada agente
+   El Jefe de Equipo y el Administrador abren la ficha de cualquier agente con
+   un clic y la gestionan; cada agente ve la suya —y solo la suya— en «Mi
+   ficha». Es la misma ficha para los dos lados: agente_fichas guarda los datos
+   de gestión y agente_seguimiento el historial (notas, tareas, reuniones...).
+   Quién ve qué lo decide RLS: ver NO-SUBIR-supabase/13-fichas-agente.sql.
+   ========================================================================== */
+var TIPOS_AG = {
+  nota:       {n:'Nota',       i:'chat',     c:''},
+  tarea:      {n:'Tarea',      i:'check',    c:'amber'},
+  objetivo:   {n:'Objetivo',   i:'target',   c:'violet'},
+  reunion:    {n:'Reunión',    i:'calendar', c:'blue'},
+  evaluacion: {n:'Evaluación', i:'trend',    c:'green'}
+};
+var TABS_AG = [
+  {k:'ficha', n:'Ficha de gestión', i:'user'},
+  {k:'seg',   n:'Seguimiento',      i:'clock'},
+  {k:'tar',   n:'Tareas',           i:'check'}
+];
+var AG = {
+  fichas:{}, seg:{}, cargando:false, cargado:false, error:'',
+  det:null, tab:'ficha', borrador:null, guardando:false, filtro:'',
+  nuevo:{tipo:'nota', titulo:'', texto:'', fecha:''}
+};
+
+function agDirijo(){ return S.role === 'admin' || S.role === 'manager'; }
+function agConectado(){ return typeof SB !== 'undefined' && SB.estado === 'conectado'; }
+function agYoId(){
+  if(agConectado() && SB.perfil) return SB.perfil.id;
+  var u = usuarioPorMail(S.email || ''); return u ? u.id : null;
+}
+function agAgentes(){ return USUARIOS.filter(function(u){ return u.rol === 'commercial'; }); }
+function agFichaVacia(id){
+  return {agente_id:id, zona:'', equipo:'', especialidad:'', incorporacion:'',
+          objetivo_mensual:'', objetivos:'', plan_accion:'', formacion:'',
+          actualizado:null, actualizado_por:null};
+}
+function agFicha(id){ return AG.fichas[id] || agFichaVacia(id); }
+
+function agCargaLista(){
+  if(AG.cargando) return;
+  if(!agConectado()){ AG.cargado = true; return; }
+  AG.cargando = true; AG.error = '';
+  sbSelect('agente_fichas', 'select=*').then(function(r){
+    AG.cargando = false; AG.cargado = true;
+    if(r && r.ok){ (r.datos || []).forEach(function(f){ AG.fichas[f.agente_id] = f; }); }
+    else AG.error = sbMensaje(r);
+    renderApp();
+  }, function(){ AG.cargando = false; AG.cargado = true; AG.error = 'Sin conexión con Supabase.'; renderApp(); });
+}
+function agCargaDetalle(id){
+  if(!agConectado()) return;
+  Promise.all([
+    sbSelect('agente_fichas', 'agente_id=eq.'+id+'&select=*'),
+    sbSelect('agente_seguimiento', 'agente_id=eq.'+id+'&select=*&order=creado.desc')
+  ]).then(function(rs){
+    if(rs[0] && rs[0].ok && rs[0].datos && rs[0].datos[0]) AG.fichas[id] = rs[0].datos[0];
+    if(rs[1] && rs[1].ok) AG.seg[id] = rs[1].datos || [];
+    else if(rs[1]) AG.error = sbMensaje(rs[1]);
+    if(AG.det === id && !AG.guardando) AG.borrador = null;
+    renderApp();
+  });
+}
+
+function agAbre(id){
+  AG.det = id; AG.tab = 'ficha'; AG.borrador = null; AG.error = '';
+  AG.nuevo = {tipo: agDirijo() ? 'tarea' : 'nota', titulo:'', texto:'', fecha:''};
+  renderApp();
+  agCargaDetalle(id);
+}
+function agCierra(){ AG.det = null; AG.borrador = null; renderApp(); }
+
+function agGuardaFicha(id){
+  var b = AG.borrador; if(!b) return;
+  var fila = {agente_id:id, zona:b.zona.trim(), equipo:b.equipo.trim(),
+    especialidad:b.especialidad.trim(), incorporacion:b.incorporacion || null,
+    objetivo_mensual: b.objetivo_mensual === '' || b.objetivo_mensual === null
+      ? null : Number(String(b.objetivo_mensual).replace(',', '.')),
+    objetivos:b.objetivos, plan_accion:b.plan_accion, formacion:b.formacion};
+  if(fila.objetivo_mensual !== null && (isNaN(fila.objetivo_mensual) || fila.objetivo_mensual < 0)){
+    toast('El objetivo mensual tiene que ser un importe en euros.'); return;
+  }
+  if(!agConectado()){
+    fila.actualizado = new Date().toISOString(); AG.fichas[id] = fila; AG.borrador = null;
+    toast('Ficha guardada.'); renderApp(); return;
+  }
+  AG.guardando = true; renderApp();
+  sbConSesion(function(){
+    return sbFetch('/rest/v1/agente_fichas?on_conflict=agente_id', {method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=representation'}, body:fila});
+  }).then(function(r){
+    AG.guardando = false;
+    if(!r.ok){ toast(sbMensaje(r)); renderApp(); return; }
+    if(Array.isArray(r.datos) && r.datos[0]) AG.fichas[id] = r.datos[0];
+    AG.borrador = null; toast('Ficha guardada. El agente ya la ve en «Mi ficha».'); renderApp();
+  });
+}
+
+function agAnade(id){
+  var N = AG.nuevo;
+  if(!N.titulo.trim()){ toast('Escribe un título para el apunte.'); return; }
+  if(!agDirijo()) N.tipo = 'nota';
+  var fila = {agente_id:id, tipo:N.tipo, titulo:N.titulo.trim(), texto:N.texto.trim(),
+              fecha:N.fecha || null};
+  function hecho(nueva){
+    (AG.seg[id] = AG.seg[id] || []).unshift(nueva);
+    AG.nuevo = {tipo:N.tipo, titulo:'', texto:'', fecha:''};
+    toast(TIPOS_AG[nueva.tipo].n+' añadida a la ficha.'); renderApp();
+  }
+  if(!agConectado()){
+    fila.id = Date.now(); fila.autor_id = agYoId(); fila.autor_nombre = S.name || '';
+    fila.hecho = false; fila.creado = new Date().toISOString(); hecho(fila); return;
+  }
+  sbInsert('agente_seguimiento', fila).then(function(r){
+    if(!r.ok){ toast(sbMensaje(r)); return; }
+    hecho(Array.isArray(r.datos) ? r.datos[0] : r.datos);
+  });
+}
+
+function agMarca(id, segId){
+  var e = (AG.seg[id] || []).filter(function(x){ return String(x.id) === String(segId); })[0];
+  if(!e) return;
+  e.hecho = !e.hecho; renderApp();
+  if(!agConectado()) return;
+  sbUpdate('agente_seguimiento', 'id=eq.'+e.id, {hecho:e.hecho}).then(function(r){
+    if(!r.ok){ e.hecho = !e.hecho; toast(sbMensaje(r)); renderApp(); }
+  });
+}
+
+function agBorra(id, segId){
+  var lista = AG.seg[id] || [];
+  var e = lista.filter(function(x){ return String(x.id) === String(segId); })[0];
+  if(!e) return;
+  function quita(){ lista.splice(lista.indexOf(e), 1); toast('Apunte eliminado.'); renderApp(); }
+  if(!agConectado()){ quita(); return; }
+  sbDelete('agente_seguimiento', 'id=eq.'+e.id).then(function(r){
+    if(!r.ok){ toast(sbMensaje(r)); return; }
+    quita();
+  });
+}
+
+/* ------------------------------ PESTAÑAS -------------------------------- */
+function agTabFicha(u, puedeEditar){
+  if(puedeEditar && !AG.borrador) AG.borrador = JSON.parse(JSON.stringify(agFicha(u.id)));
+  var f = puedeEditar ? AG.borrador : agFicha(u.id);
+  function campo(k, etiqueta, ph, tipo){
+    var val = f[k] === null || f[k] === undefined ? '' : String(f[k]);
+    return '<div class="field"><label class="f">'+etiqueta+'</label>'+
+      (puedeEditar
+        ? '<input class="inp" data-agf="'+k+'" type="'+(tipo||'text')+'" value="'+esc(val)+'" placeholder="'+esc(ph)+'">'
+        : '<div class="inp" style="min-height:40px">'+(val ? esc(val)+(k==='objetivo_mensual'?' €':'') : '<span class="muted">—</span>')+'</div>')+'</div>';
+  }
+  function area(k, etiqueta, ph){
+    var val = f[k] || '';
+    return '<div class="field"><label class="f">'+etiqueta+'</label>'+
+      (puedeEditar
+        ? '<textarea class="inp" rows="3" data-agf="'+k+'" placeholder="'+esc(ph)+'">'+esc(val)+'</textarea>'
+        : '<div class="inp" style="min-height:60px;white-space:pre-wrap">'+(val ? esc(val) : '<span class="muted">Sin definir todavía.</span>')+'</div>')+'</div>';
+  }
+  var real = agFicha(u.id);
+  return '<h4 class="ft-t">Ficha de gestión</h4>'+
+    (puedeEditar ? '' : '<div class="nota" style="margin-bottom:14px">'+ic('shield',15)+
+      '<span>Esta es tu área privada: solo la ves tú y tu dirección. Los objetivos los fija tu Jefe de Equipo; '+
+      'en <strong>Seguimiento</strong> puedes añadir tus notas.</span></div>')+
+    '<div class="grid g-2">'+
+      campo('zona', 'Zona o territorio', 'Ej. Asturias centro')+
+      campo('equipo', 'Equipo', 'Ej. Equipo Norte')+
+    '</div>'+
+    '<div class="grid g-2">'+
+      campo('especialidad', 'Especialidad', 'Ej. Hostelería y comercio local')+
+      campo('incorporacion', 'Fecha de incorporación', '', 'date')+
+    '</div>'+
+    campo('objetivo_mensual', 'Objetivo mensual (€)', 'Ej. 6000', 'number')+
+    area('objetivos', 'Objetivos del periodo', 'Qué tiene que conseguir este mes o trimestre')+
+    area('plan_accion', 'Plan de acción', 'Cómo lo va a conseguir: zonas, sectores, llamadas por día...')+
+    area('formacion', 'Formación y desarrollo', 'Cursos pendientes, puntos a mejorar, acompañamientos...')+
+    (real.actualizado ? '<div class="tiny muted">Última actualización '+
+      esc(haceRel(new Date(real.actualizado).getTime()))+'</div>' : '');
+}
+
+function agApunteHTML(u, e, puedeBorrar){
+  var t = TIPOS_AG[e.tipo] || TIPOS_AG.nota;
+  return '<div class="ag-ap'+(e.hecho?' hecho':'')+'">'+
+    (e.tipo === 'tarea'
+      ? '<button class="ag-chk'+(e.hecho?' on':'')+'" data-ag-marca="'+e.id+'" title="Marcar como hecha">'+
+          (e.hecho ? ic('check',12) : '')+'</button>'
+      : '<span class="ico-box '+t.c+'" style="width:26px;height:26px;flex:0 0 26px">'+ic(t.i,13)+'</span>')+
+    '<div style="flex:1;min-width:0">'+
+      '<div class="row" style="gap:7px;align-items:center;flex-wrap:wrap">'+
+        '<span class="small" style="color:#fff;font-weight:600">'+esc(e.titulo)+'</span>'+
+        '<span class="chip '+t.c+' tiny-chip">'+t.n+'</span>'+
+        (e.fecha ? '<span class="tiny muted">'+ic('calendar',10)+' '+
+          esc(new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES'))+'</span>' : '')+'</div>'+
+      (e.texto ? '<div class="tiny" style="color:#CBD5E1;margin-top:4px;white-space:pre-wrap">'+esc(e.texto)+'</div>' : '')+
+      '<div class="tiny muted" style="margin-top:4px">'+esc(e.autor_nombre || 'Sistema')+' · '+
+        esc(haceRel(new Date(e.creado).getTime()))+'</div></div>'+
+    (puedeBorrar ? '<button class="btn btn-s btn-xs" data-ag-borra="'+e.id+'" title="Eliminar">'+ic('x',11)+'</button>' : '')+
+  '</div>';
+}
+
+function agTabSeg(u, soloTareas){
+  var yo = agYoId(), dirijo = agDirijo();
+  var lista = (AG.seg[u.id] || []).filter(function(e){ return !soloTareas || e.tipo === 'tarea'; });
+  if(soloTareas) lista = lista.slice().sort(function(a,b){ return (a.hecho?1:0) - (b.hecho?1:0); });
+  var N = AG.nuevo;
+  var tipos = dirijo ? Object.keys(TIPOS_AG) : ['nota'];
+  var form = soloTareas && !dirijo ? '' :
+    '<div class="card flat" style="margin-bottom:14px;padding:14px">'+
+      '<div class="grid g-2">'+
+        '<div class="field"><label class="f">Tipo</label><select class="inp" id="agn-tipo"'+(dirijo?'':' disabled')+'>'+
+          tipos.map(function(k){ return '<option value="'+k+'"'+(N.tipo===k?' selected':'')+'>'+TIPOS_AG[k].n+'</option>'; }).join('')+
+        '</select></div>'+
+        '<div class="field"><label class="f">Fecha (opcional)</label>'+
+          '<input class="inp" type="date" id="agn-fecha" value="'+esc(N.fecha)+'"></div></div>'+
+      '<div class="field"><label class="f">Título</label>'+
+        '<input class="inp" id="agn-tit" value="'+esc(N.titulo)+'" placeholder="'+
+          (dirijo ? 'Ej. Visitar 10 comercios de la zona' : 'Ej. Cliente interesado en el pack web')+'"></div>'+
+      '<div class="field"><label class="f">Detalle</label>'+
+        '<textarea class="inp" rows="2" id="agn-txt" placeholder="Opcional">'+esc(N.texto)+'</textarea></div>'+
+      '<div class="row" style="justify-content:flex-end"><button class="btn btn-p" id="agn-add">'+
+        ic('plus',14)+' Añadir a la ficha</button></div></div>';
+  var items = lista.map(function(e){
+    return agApunteHTML(u, e, dirijo || (e.autor_id === yo && u.id === yo));
+  }).join('') || '<p class="tiny muted" style="padding:10px 0">'+
+    (soloTareas ? 'No hay tareas asignadas.' : 'Todavía no hay apuntes en esta ficha.')+'</p>';
+  return '<h4 class="ft-t">'+(soloTareas ? 'Tareas' : 'Seguimiento')+'</h4>'+
+    '<p class="tiny muted" style="margin:0 0 12px">'+(soloTareas
+      ? 'Lo que tiene pendiente el agente. Él mismo puede marcarlas como hechas.'
+      : dirijo ? 'Notas, tareas, reuniones y evaluaciones. El agente lo ve todo en su ficha.'
+               : 'Lo que te apunta tu dirección y tus propias notas.')+'</p>'+
+    form + '<div class="stack" style="gap:8px">'+items+'</div>';
+}
+
+function agCuerpo(u, puedeEditar){
+  return AG.tab === 'seg' ? agTabSeg(u, false) : AG.tab === 'tar' ? agTabSeg(u, true) : agTabFicha(u, puedeEditar);
+}
+function agNav(){
+  return TABS_AG.map(function(t){
+    return '<button class="ft-nav'+(AG.tab===t.k?' on':'')+'" data-agtab="'+t.k+'">'+
+      ic(t.i,15)+'<span>'+t.n+'</span></button>'; }).join('');
+}
+function agPie(puedeEditar){
+  if(AG.tab !== 'ficha' || !puedeEditar) return '';
+  return '<button class="btn btn-s" id="ag-descarta">Descartar</button>'+
+    '<button class="btn btn-p" id="ag-guarda"'+(AG.guardando?' disabled':'')+'>'+ic('save',15)+
+      (AG.guardando ? ' Guardando...' : ' Guardar ficha')+'</button>';
+}
+
+function agFichaModal(){
+  if(!AG.det) return '';
+  var u = usuarioPorId(AG.det); if(!u){ AG.det = null; return ''; }
+  var pend = (AG.seg[u.id] || []).filter(function(e){ return e.tipo==='tarea' && !e.hecho; }).length;
+  return '<div class="ov" data-ov="ag-detalle"><div class="modal ficha">'+
+    '<div class="ft-head">'+
+      '<div class="row" style="gap:13px;align-items:center;min-width:0">'+avatarHTML(u,46)+
+        '<div style="min-width:0"><div class="row" style="gap:8px;align-items:center">'+
+          '<h3 style="margin:0;font-size:16px;color:#fff" class="trunc">'+esc(u.n)+'</h3>'+chipEstado(u.est)+
+          (pend ? '<span class="chip amber tiny-chip">'+pend+' tarea'+(pend>1?'s':'')+' pendiente'+(pend>1?'s':'')+'</span>' : '')+
+        '</div>'+
+        '<div class="tiny muted trunc">'+esc(u.mail)+' · '+esc(u.tel || '')+
+          ' · relación <span class="mono">'+esc(u.rel)+'</span></div></div></div>'+
+      '<button class="icon-btn" id="ag-x">'+ic('x',16)+'</button></div>'+
+    '<div class="ft-body"><div class="ft-side">'+agNav()+'</div>'+
+      '<div class="ft-main">'+agCuerpo(u, true)+'</div></div>'+
+    '<div class="ft-foot"><span class="tiny muted">Área privada: la ven este agente y su dirección.</span>'+
+      '<div class="row" style="gap:10px">'+agPie(true)+
+      (AG.tab !== 'ficha' ? '<button class="btn btn-s" id="ag-cerrar">Cerrar</button>' : '')+'</div></div>'+
+  '</div></div>';
+}
+
+/* ------------------------------ EVENTOS --------------------------------- */
+function agEventos(id){
+  qa('[data-agtab]').forEach(function(b){ b.onclick = function(){ agLeeBorrador(); AG.tab = b.dataset.agtab; renderApp(); }; });
+  qa('[data-agf]').forEach(function(i){ i.oninput = function(){
+    if(AG.borrador) AG.borrador[i.dataset.agf] = i.value; }; });
+  if(q('#ag-guarda'))   q('#ag-guarda').onclick   = function(){ agLeeBorrador(); agGuardaFicha(id); };
+  if(q('#ag-descarta')) q('#ag-descarta').onclick = function(){ AG.borrador = null; renderApp(); };
+  if(q('#ag-x'))        q('#ag-x').onclick        = agCierra;
+  if(q('#ag-cerrar'))   q('#ag-cerrar').onclick   = agCierra;
+  function leeNuevo(){
+    if(q('#agn-tipo'))  AG.nuevo.tipo   = q('#agn-tipo').value;
+    if(q('#agn-tit'))   AG.nuevo.titulo = q('#agn-tit').value;
+    if(q('#agn-txt'))   AG.nuevo.texto  = q('#agn-txt').value;
+    if(q('#agn-fecha')) AG.nuevo.fecha  = q('#agn-fecha').value;
+  }
+  if(q('#agn-tipo')) q('#agn-tipo').onchange = function(){ leeNuevo(); };
+  if(q('#agn-add'))  q('#agn-add').onclick   = function(){ leeNuevo(); agAnade(id); };
+  qa('[data-ag-marca]').forEach(function(b){ b.onclick = function(){ agMarca(id, b.dataset.agMarca); }; });
+  qa('[data-ag-borra]').forEach(function(b){ b.onclick = function(){ agBorra(id, b.dataset.agBorra); }; });
+  var ov = q('[data-ov="ag-detalle"]');
+  if(ov) ov.onclick = function(e){ if(e.target === this) agCierra(); };
+}
+function agLeeBorrador(){
+  if(!AG.borrador) return;
+  qa('[data-agf]').forEach(function(i){ AG.borrador[i.dataset.agf] = i.value; });
+}
+
+/* ---------------- VISTA · FICHAS DE AGENTES (dirección) ------------------ */
+function viewEquipo(v){
+  if(!agDirijo()){
+    v.innerHTML = '<div class="card" style="text-align:center;padding:44px">'+
+      '<div class="ico-box red" style="width:52px;height:52px;margin:0 auto 14px">'+ic('shield',24)+'</div>'+
+      '<h3 style="margin:0 0 6px;color:#fff">Sección restringida</h3>'+
+      '<p class="small muted" style="margin:0">Las fichas de agentes son para el Jefe de Equipo y la dirección.</p></div>';
+    return;
+  }
+  if(!AG.cargado && !AG.cargando) agCargaLista();
+
+  var todos = agAgentes();
+  var lista = todos.filter(function(u){
+    var f = agFicha(u.id);
+    var t = (u.n+' '+u.mail+' '+u.tel+' '+u.rel+' '+f.zona+' '+f.equipo).toLowerCase();
+    return !AG.filtro || t.indexOf(AG.filtro.toLowerCase().trim()) > -1;
+  });
+  var conFicha = todos.filter(function(u){ return !!AG.fichas[u.id]; }).length;
+
+  var filas = lista.map(function(u){
+    var f = agFicha(u.id);
+    return '<tr class="u-fila u-click'+(u.est!=='Activo'?' apagada':'')+'" data-ag-fila="'+u.id+'" '+
+        'title="Abrir la ficha de '+esc(u.n)+'">'+
+      '<td><div class="row" style="gap:11px;align-items:center">'+avatarHTML(u,38)+
+        '<div style="min-width:0"><div class="w trunc">'+esc(u.n)+'</div>'+
+        '<div class="tiny muted trunc">'+esc(u.mail)+'</div></div></div></td>'+
+      '<td class="tiny muted">'+esc(f.zona || '—')+(f.equipo ? '<div class="tiny" style="color:var(--txt-3)">'+esc(f.equipo)+'</div>' : '')+'</td>'+
+      '<td class="tiny nowrap">'+(f.objetivo_mensual !== '' && f.objetivo_mensual !== null && f.objetivo_mensual !== undefined
+        ? esc(Number(f.objetivo_mensual).toLocaleString('es-ES'))+' €' : '<span class="muted">sin fijar</span>')+'</td>'+
+      '<td>'+chipEstado(u.est)+'</td>'+
+      '<td>'+(AG.fichas[u.id] ? '<span class="chip green">Al día</span>' : '<span class="chip amber">Por crear</span>')+'</td>'+
+      '<td style="text-align:right"><button class="btn btn-s btn-xs" data-ag-ver="'+u.id+'">'+ic('eye',12)+' Abrir ficha</button></td>'+
+    '</tr>';
+  }).join('') || '<tr><td colspan="6" class="muted" style="text-align:center;padding:26px">'+
+    (AG.cargando ? 'Cargando fichas...' : todos.length ? 'Ningún agente coincide con la búsqueda.'
+      : 'Todavía no hay agentes dados de alta.')+'</td></tr>';
+
+  v.innerHTML =
+  '<div class="grid g-3" style="margin-bottom:16px">'+
+    [['Agentes', String(todos.length), 'users', 'blue'],
+     ['Con ficha creada', String(conFicha), 'check', 'green'],
+     ['Fichas por crear', String(todos.length - conFicha), 'alert', 'amber']]
+    .map(function(k){ return '<div class="card kpi"><div class="row" style="justify-content:space-between">'+
+      '<div class="lbl">'+k[0]+'</div><div class="ico-box '+k[3]+'">'+ic(k[2],17)+'</div></div>'+
+      '<div class="val">'+k[1]+'</div></div>'; }).join('')+
+  '</div>'+
+  '<div class="card">'+
+    '<div class="card-h" style="margin:0;flex-wrap:wrap">'+
+      '<div><div class="row" style="gap:8px;margin-bottom:6px"><span class="chip blue">Área privada por agente</span></div>'+
+        '<h3 style="font-size:18px">Fichas de agentes</h3>'+
+        '<p>Pincha en un agente para abrir su ficha: objetivos, plan de acción, tareas y seguimiento. '+
+        'Cada agente ve la suya en «Mi ficha»; nunca la de otro.</p></div>'+
+      (agConectado() ? '<button class="btn btn-s" id="ag-recarga">'+ic('refresh',14)+' Actualizar</button>' : '')+'</div>'+
+    '<div class="search" style="width:100%;max-width:380px;margin:14px 0">'+ic('search',15)+
+      '<input id="ag-find" placeholder="Nombre, correo, zona o equipo..." value="'+esc(AG.filtro)+'"></div>'+
+    (AG.error ? '<div class="nota" style="margin-bottom:12px">'+ic('alert',15)+'<span>'+esc(AG.error)+
+      ' — ¿has ejecutado 13-fichas-agente.sql en Supabase?</span></div>' : '')+
+    '<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
+      '<th>Agente</th><th>Zona / equipo</th><th>Objetivo mensual</th><th>Estado</th><th>Ficha</th><th></th>'+
+      '</tr></thead><tbody>'+filas+'</tbody></table></div>'+
+  '</div>'+ agFichaModal();
+
+  q('#ag-find').onchange = function(){ AG.filtro = this.value; setTimeout(renderApp,0); };
+  if(q('#ag-recarga')) q('#ag-recarga').onclick = function(){
+    AG.cargado = false; agCargaLista(); if(AG.det) agCargaDetalle(AG.det); };
+  qa('[data-ag-ver]').forEach(function(b){ b.onclick = function(e){ e.stopPropagation(); agAbre(b.dataset.agVer); }; });
+  qa('[data-ag-fila]').forEach(function(tr){ tr.onclick = function(e){
+    if(e.target.closest('button, select, input, a')) return;
+    agAbre(tr.dataset.agFila); }; });
+  if(AG.det) agEventos(AG.det);
+}
+
+/* -------------------- VISTA · MI FICHA (el propio agente) ---------------- */
+function viewMiFicha(v){
+  var yo = agYoId();
+  var u = yo ? usuarioPorId(yo) : null;
+  if(!u && agConectado() && SB.perfil) u = deFila(SB.perfil, 0);
+  if(!u){
+    v.innerHTML = '<div class="card muted" style="padding:30px">No se ha encontrado tu ficha.</div>';
+    return;
+  }
+  if(AG.det !== u.id){
+    AG.det = u.id; AG.tab = 'ficha'; AG.borrador = null;
+    AG.nuevo = {tipo:'nota', titulo:'', texto:'', fecha:''};
+    agCargaDetalle(u.id);
+  }
+  var pend = (AG.seg[u.id] || []).filter(function(e){ return e.tipo==='tarea' && !e.hecho; }).length;
+  v.innerHTML =
+  '<div class="card" style="margin-bottom:16px">'+
+    '<div class="card-h" style="margin:0;flex-wrap:wrap">'+
+      '<div class="row" style="gap:13px;align-items:center">'+avatarHTML(u,46)+
+        '<div><h3 style="font-size:18px;margin:0">Mi ficha</h3>'+
+        '<p style="margin:2px 0 0">'+esc(u.n)+' · relación <span class="mono">'+esc(u.rel)+'</span>'+
+        (pend ? ' · <span class="chip amber tiny-chip">'+pend+' tarea'+(pend>1?'s':'')+' pendiente'+(pend>1?'s':'')+'</span>' : '')+
+        '</p></div></div>'+
+      (agConectado() ? '<button class="btn btn-s" id="ag-recarga">'+ic('refresh',14)+' Actualizar</button>' : '')+'</div>'+
+  '</div>'+
+  '<div class="card" style="padding:0;overflow:hidden"><div class="ft-body ag-mia">'+
+    '<div class="ft-side">'+agNav()+'</div>'+
+    '<div class="ft-main">'+agCuerpo(u, false)+'</div></div></div>';
+
+  if(q('#ag-recarga')) q('#ag-recarga').onclick = function(){ agCargaDetalle(u.id); };
+  agEventos(u.id);
 }
 
 /* ========== PESTAÑA «BASE DE DATOS» DEL CENTRO DE CONFIGURACIÓN ========== */

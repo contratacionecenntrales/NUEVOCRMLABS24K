@@ -22,7 +22,7 @@ DirectoryIndex index.html
 
 # --- Cabeceras de seguridad ---------------------------------------------------
 <IfModule mod_headers.c>
-  Header always set Content-Security-Policy "default-src 'none'; script-src 'self' 'sha256-ZVwSi6f5qNOgsb9ymbNVK+tGVOlxoTVePJmW6VrvGok=' 'sha256-FClgaDpupbLx18rPepL1KLcQUnwWxYhIB4wLBL7DWfA='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://ezwhkpfqnzyfulivlows.supabase.co; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+  Header always set Content-Security-Policy "default-src 'none'; script-src 'self' 'sha256-bGcVmqM9+mjZYyq+zSyxtf37L05pr1OJexCSML+oQZg=' 'sha256-FClgaDpupbLx18rPepL1KLcQUnwWxYhIB4wLBL7DWfA='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://ezwhkpfqnzyfulivlows.supabase.co; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-Frame-Options "DENY"
