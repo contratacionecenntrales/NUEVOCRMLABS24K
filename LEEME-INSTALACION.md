@@ -63,6 +63,7 @@ Proyecto: `ezwhkpfqnzyfulivlows`. En el editor SQL, **en este orden**:
 | `09-recursos.sql` | Centro de Descarga de Dosieres: repositorio documental por categorías, con analítica de descargas |
 | `10-soporte.sql` | Soporte y Tickets: escalado a dos niveles (Responsable de Soporte / Responsable del Responsable) con asignación automática por reglas |
 | `11-soporte-global.sql` | Mesa de Incidencias: vista de solo lectura con cálculo de SLA por prioridad, para el panel centralizado de admin/manager |
+| `12-alta-agentes.sql` | Permiso «Dar de alta agentes»: alta delegada de cuentas de Gestión Comercial (requiere volver a desplegar `admin-usuarios`) |
 
 Después:
 

@@ -1113,6 +1113,8 @@ a.btn.btn-g:hover{color:#fff}
 
 /* --- tabla --- */
 .u-fila.apagada td{opacity:.62}
+.u-click{cursor:pointer}
+.u-click:hover td{background:rgba(255,255,255,.035)}
 .sel-est{background:var(--card-2);border:1px solid var(--line);border-radius:20px;color:var(--txt-2);
   font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
 .sel-est.ok{background:rgba(74,222,128,.12);color:#86EFAC;border-color:rgba(74,222,128,.32)}
@@ -1888,6 +1890,7 @@ function renderApp(){
      (plantilla aplicada desde /admin/roles), esa lista manda por completo —
      no se combina con el filtro por rol. Sin ella, se comporta como siempre. */
   var items = MENU.filter(function(m){
+    if(m.id === 'users' && puedoAltaAgentes()) return true;
     if(Array.isArray(S.modulosVisibles) && S.modulosVisibles.length){
       return S.modulosVisibles.indexOf(m.id) > -1;
     }
@@ -6883,6 +6886,7 @@ var PERMISOS = [
   {g:'Sistema', ic:'cog', items:[
     {k:'sys.config',  n:'Configuración global',    d:'Marca, precios, enlaces y claves'},
     {k:'sys.usuarios',n:'Gestión de usuarios',     d:'Altas, bajas y permisos'},
+    {k:'sys.alta_agentes', n:'Dar de alta agentes', d:'Crear cuentas de Gestión Comercial (solo ese rol)'},
     {k:'sys.audit',   n:'Bitácora de auditoría',   d:'Ver quién ha cambiado qué'},
     {k:'roles.gestionar', n:'Gestionar roles personalizados', d:'Crear, editar y aplicar plantillas de permisos'}
   ]}
@@ -7341,7 +7345,48 @@ USU = {form:null, creado:null, filtro:'', rol:'', est:'', det:null, tab:'info',
        verTok:false, borrar:null, aviso:''};
 
 /* ============================== VISTA ==================================== */
+/* Alta delegada: el admin concede «sys.alta_agentes» a una persona concreta
+   (María, por ejemplo) para que pueda crear cuentas de agente. La Edge
+   Function lo vuelve a comprobar y fuerza el rol; esto solo lo refleja. */
+function puedoAltaAgentes(){
+  return S.role === 'admin' || !!(S.perms && S.perms['sys.alta_agentes']);
+}
+
+function viewAltaAgentes(v){
+  var agentes = USUARIOS.filter(function(u){ return u.rol === 'commercial'; });
+  var filas = agentes.map(function(u){
+    return '<tr class="u-fila'+(u.est!=='Activo'?' apagada':'')+'">'+
+      '<td><div class="row" style="gap:11px;align-items:center">'+avatarHTML(u,38)+
+        '<div style="min-width:0"><div class="w trunc">'+esc(u.n)+'</div>'+
+        '<div class="tiny muted trunc">'+esc(u.mail)+'</div></div></div></td>'+
+      '<td class="tiny muted nowrap">'+esc(u.tel || '—')+'</td>'+
+      '<td class="tiny mono">'+esc(u.rel)+'</td>'+
+      '<td>'+chipEstado(u.est)+'</td>'+
+      '<td class="tiny muted nowrap">'+esc(u.alta || '—')+'</td></tr>';
+  }).join('') || '<tr><td colspan="5" class="muted" style="text-align:center;padding:26px">'+
+                 'Todavía no hay agentes dados de alta.</td></tr>';
+
+  v.innerHTML =
+  '<div class="card" style="margin-bottom:16px">'+
+    '<div class="card-h" style="margin:0;flex-wrap:wrap">'+
+      '<div><div class="row" style="gap:8px;margin-bottom:6px">'+
+        '<span class="chip blue">Alta delegada</span></div>'+
+        '<h3 style="font-size:18px">Alta de agentes</h3>'+
+        '<p>Puedes crear cuentas de '+esc(ROLES.commercial.label)+'. '+
+        'Para otros roles, contraseñas o bajas, habla con el Administrador.</p></div>'+
+      '<button class="btn btn-p" id="u-nuevo">'+ic('userPlus',16)+' Dar de alta agente</button></div>'+
+  '</div>'+
+  '<div class="card" style="padding:0;overflow:hidden">'+
+    '<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
+      '<th>Agente</th><th>Teléfono</th><th>N.º relación</th><th>Estado</th><th>Alta</th>'+
+      '</tr></thead><tbody>'+filas+'</tbody></table></div></div>'+
+  altaHTML() + credencialesHTML();
+
+  eventosUsuarios(v);
+}
+
 function viewUsers(v){
+  if(S.role !== 'admin' && puedoAltaAgentes()){ viewAltaAgentes(v); return; }
   if(S.role !== 'admin'){
     v.innerHTML = '<div class="card" style="text-align:center;padding:44px">'+
       '<div class="ico-box red" style="width:52px;height:52px;margin:0 auto 14px">'+ic('shield',24)+'</div>'+
@@ -7359,7 +7404,8 @@ function viewUsers(v){
   });
 
   var filas = lista.map(function(u){
-    return '<tr class="u-fila'+(u.est!=='Activo'?' apagada':'')+'">'+
+    return '<tr class="u-fila u-click'+(u.est!=='Activo'?' apagada':'')+'" data-u-fila="'+u.id+'" '+
+        'title="Abrir la cuenta de '+esc(u.n)+'">'+
       '<td><div class="row" style="gap:11px;align-items:center">'+avatarHTML(u,38)+
         '<div style="min-width:0"><div class="w trunc">'+esc(u.n)+
           (esRaiz(u)?' <span class="chip root tiny-chip" title="Super Administrador de raíz">'+
@@ -7386,7 +7432,7 @@ function viewUsers(v){
           '</select>')+'</td>'+
       '<td class="tiny muted nowrap">'+esc(haceRel(u.ultMs))+'</td>'+
       '<td style="text-align:right"><div class="row" style="gap:5px;justify-content:flex-end">'+
-        '<button class="btn btn-s btn-xs" data-u-ver="'+u.id+'" title="Abrir ficha">'+ic('cog',12)+'</button>'+
+        '<button class="btn btn-s btn-xs" data-u-ver="'+u.id+'" title="Ver cuenta">'+ic('eye',12)+' Ver</button>'+
         '<button class="btn btn-s btn-xs" data-u-clave="'+u.id+'" title="Restablecer contraseña">'+ic('refresh',12)+'</button>'+
         '<button class="btn btn-s btn-xs" data-u-goo="'+u.id+'" title="Permitir o revocar Google">'+googleG(12)+'</button>'+
         (u.rol==='admin' ? '' :
@@ -7522,7 +7568,8 @@ function altaHTML(){
   var fallos = F.pass ? revisaClave(F.pass) : [];
   return '<div class="ov" data-ov="alta"><div class="modal" style="max-width:600px">'+
     '<div class="row" style="justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px">'+
-      '<h3 style="margin:0;font-size:16px;color:#fff">Dar de alta a un usuario</h3>'+
+      '<h3 style="margin:0;font-size:16px;color:#fff">'+
+        (S.role === 'admin' ? 'Dar de alta a un usuario' : 'Dar de alta a un agente')+'</h3>'+
       '<button class="icon-btn" data-u-cerrar="1">'+ic('x',16)+'</button></div>'+
     '<div class="grid g-2">'+
       '<div class="field"><label class="f">Nombre</label>'+
@@ -7541,8 +7588,9 @@ function altaHTML(){
         '<input class="inp" id="nu-ext" value="'+esc(F.ext)+'" placeholder="102"></div>'+
     '</div>'+
     '<div class="grid g-2">'+
-      '<div class="field"><label class="f">Rol asignado</label><select class="inp" id="nu-rol">'+
-        Object.keys(ROLES).map(function(k){
+      '<div class="field"><label class="f">Rol asignado</label><select class="inp" id="nu-rol"'+
+        (S.role === 'admin' ? '' : ' disabled')+'>'+
+        (S.role === 'admin' ? Object.keys(ROLES) : ['commercial']).map(function(k){
           return '<option value="'+k+'"'+(F.rol===k?' selected':'')+'>'+ROLES[k].label+'</option>'; }).join('')+
         '</select><div class="tiny muted" style="margin-top:6px">'+esc(ROLES[F.rol].desc)+'</div></div>'+
       '<div class="field"><label class="f">Número de relación</label>'+
@@ -7607,9 +7655,9 @@ function borradoHTML(){
 
 /* ============================== EVENTOS ================================== */
 function eventosUsuarios(v){
-  q('#u-find').onchange = function(){ USU.filtro = this.value; setTimeout(renderApp,0); };
-  q('#u-frol').onchange = function(){ USU.rol = this.value; setTimeout(renderApp,0); };
-  q('#u-fest').onchange = function(){ USU.est = this.value; setTimeout(renderApp,0); };
+  if(q('#u-find')) q('#u-find').onchange = function(){ USU.filtro = this.value; setTimeout(renderApp,0); };
+  if(q('#u-frol')) q('#u-frol').onchange = function(){ USU.rol = this.value; setTimeout(renderApp,0); };
+  if(q('#u-fest')) q('#u-fest').onchange = function(){ USU.est = this.value; setTimeout(renderApp,0); };
   if(q('#u-limpia')) q('#u-limpia').onclick = function(){
     USU.filtro=''; USU.rol=''; USU.est=''; renderApp(); };
   if(q('#u-exp'))  q('#u-exp').onclick  = exportaUsuarios;
@@ -7636,6 +7684,7 @@ function eventosUsuarios(v){
     F.nom=q('#nu-nom').value; F.ape=q('#nu-ape').value; F.mail=q('#nu-mail').value;
     F.pre=q('#nu-pre').value; F.num=q('#nu-num').value; F.ext=q('#nu-ext').value;
     F.rol=q('#nu-rol').value; F.rel=q('#nu-rel').value; F.pass=q('#nu-pass').value;
+    if(S.role !== 'admin') F.rol = 'commercial';
   }
   if(q('#nu-rol'))      q('#nu-rol').onchange   = function(){ leeAlta(); setTimeout(renderApp,0); };
   if(q('#nu-pass'))     q('#nu-pass').onchange  = function(){ leeAlta(); setTimeout(renderApp,0); };
@@ -7741,8 +7790,14 @@ function eventosUsuarios(v){
       USU.borrar = null; toast(u.n+' · dado de baja.'); renderApp();
     }); };
 
-  qa('[data-u-ver]').forEach(function(b){ b.onclick = function(){
+  qa('[data-u-ver]').forEach(function(b){ b.onclick = function(e){
+    e.stopPropagation();
     USU.det = b.dataset.uVer; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
+  /* Un clic en cualquier parte de la fila abre la cuenta; los botones, el
+     selector de estado y los de copiar siguen haciendo lo suyo. */
+  qa('[data-u-fila]').forEach(function(tr){ tr.onclick = function(e){
+    if(e.target.closest('button, select, input, a, .cp, .candado')) return;
+    USU.det = tr.dataset.uFila; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
 }
 
 /* ==========================================================================
@@ -8565,6 +8620,7 @@ function sbAbrePanel(){
       S.logged = true; S.name = u.n; S.phone = u.tel || (u.pre+' '+u.num).trim();
       S.email = u.mail; S.role = u.rol; S.raiz = u.raiz; S.view = 'dashboard';
       S.modulosVisibles = u.modvis;
+      S.perms = u.perms;
       CUENTAS.forEach(function(c){ c.activa = false; });
       if(!CUENTAS.filter(function(c){ return c.mail === u.mail; })[0]){
         CUENTAS.unshift({id:'cu-'+u.id, n:u.n, mail:u.mail, rel:u.rel, rol:u.rol, activa:true});

@@ -21,6 +21,7 @@ de notas, copia **todo** el contenido, pégalo y pulsa **Run**. En este orden:
 | 9 | `09-recursos.sql` | Centro de Descarga de Dosieres: repositorio documental por categorías, con analítica de descargas |
 | 10 | `10-soporte.sql` | Soporte y Tickets: escalado a dos niveles (Responsable de Soporte / Responsable del Responsable) con asignación automática por reglas |
 | 11 | `11-soporte-global.sql` | Mesa de Incidencias: vista de solo lectura con cálculo de SLA por prioridad, para el panel centralizado de admin/manager |
+| 12 | `12-alta-agentes.sql` | Permiso «Dar de alta agentes»: deja a una persona concreta (p. ej. María) crear cuentas de Gestión Comercial sin ser administradora |
 
 Con el **1** y el **2** ya entras. El **6** es de seguridad y no es opcional.
 Los demás son para los módulos correspondientes.

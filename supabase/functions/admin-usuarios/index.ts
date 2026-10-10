@@ -11,6 +11,10 @@
 //   El panel llama a esta función con el token de sesión del administrador.
 //   Lo primero que hace la función es comprobar quién llama y si es admin.
 //
+//   Excepción única: quien tenga el permiso «sys.alta_agentes» puede usar el
+//   ALTA, y solo para crear cuentas de Gestión Comercial (agentes). El resto
+//   de rutas —contraseñas y borrados— siguen siendo exclusivas del admin.
+//
 // DESPLIEGUE
 //   supabase functions deploy admin-usuarios --project-ref ezwhkpfqnzyfulivlows
 //   (SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase solo)
@@ -117,23 +121,30 @@ Deno.serve(async (req) => {
 
   const { data: quien } = await comoUsuario
     .from('perfiles')
-    .select('id, nombre, apellidos, rol, estado, raiz')
+    .select('id, nombre, apellidos, rol, estado, raiz, permisos')
     .eq('id', sesion.user.id)
     .single();
-
-  if (!quien || quien.rol !== 'admin' || quien.estado !== 'Activo') {
-    console.warn('Acceso denegado a admin-usuarios', { usuario: sesion.user.id, rol: quien?.rol });
-    return error('Esta operación es exclusiva del administrador.', 'ROL_INSUFICIENTE', 403);
-  }
-
-  // Cliente con la clave de servicio: solo a partir de aquí, y solo porque ya
-  // sabemos que quien llama es administrador activo.
-  const admin = createClient(URL_SB, CLAVE_SERV, { auth: { persistSession: false } });
 
   const url    = new URL(req.url);
   const trozos = url.pathname.split('/').filter(Boolean);   // [ 'admin-usuarios', id?, 'password'? ]
   const id     = trozos[1];
   const accion = trozos[2];
+
+  const activo   = !!quien && quien.estado === 'Activo';
+  const esAdmin  = activo && quien.rol === 'admin';
+  // Alta delegada: solo la ruta de alta, solo con el permiso concedido por un
+  // administrador y solo para el rol de agente (se fuerza más abajo).
+  const altaDelegada = !esAdmin && activo && req.method === 'POST' && !id &&
+                       quien.permisos?.['sys.alta_agentes'] === true;
+
+  if (!esAdmin && !altaDelegada) {
+    console.warn('Acceso denegado a admin-usuarios', { usuario: sesion.user.id, rol: quien?.rol });
+    return error('Esta operación es exclusiva del administrador.', 'ROL_INSUFICIENTE', 403);
+  }
+
+  // Cliente con la clave de servicio: solo a partir de aquí, y solo porque ya
+  // sabemos que quien llama es administrador activo o tiene el alta delegada.
+  const admin = createClient(URL_SB, CLAVE_SERV, { auth: { persistSession: false } });
 
   async function anota(destino: { id: string; nombre: string } | null, accionTxt: string, detalle = '') {
     await admin.from('bitacora').insert({
@@ -162,6 +173,9 @@ Deno.serve(async (req) => {
       if (nombre.length < 2)  return error('Nombre no válido.', 'NOMBRE_INVALIDO');
       if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return error('Correo no válido.', 'EMAIL_INVALIDO');
       if (!ROLES.includes(b.rol)) return error('Rol no válido.', 'ROL_INVALIDO');
+      if (altaDelegada && b.rol !== 'commercial') {
+        return error('Solo puedes dar de alta agentes (Gestión Comercial).', 'ROL_NO_PERMITIDO', 403);
+      }
       if (b.prefijo && !/^\+\d{1,3}$/.test(String(b.prefijo))) {
         return error('El prefijo debe ser internacional, como +34.', 'PREFIJO_INVALIDO');
       }
@@ -205,6 +219,11 @@ Deno.serve(async (req) => {
         // Si la ficha falla, no dejamos una identidad huérfana en Auth.
         await admin.auth.admin.deleteUser(creado.user.id);
         return error('No se ha podido crear la ficha: ' + ePerfil.message, 'ALTA_PERFIL', 500);
+      }
+
+      if (altaDelegada) {
+        await anota({ id: perfil.id, nombre: `${nombre} ${apellidos}`.trim() },
+                    'Cuenta creada', `Alta delegada de agente · relación ${perfil.rel}`);
       }
 
       // La contraseña en claro sale UNA vez, para entregarla en mano.
