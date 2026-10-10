@@ -7,8 +7,9 @@
 --   · agente_seguimiento  historial: notas, tareas, reuniones, evaluaciones…
 --
 -- Quién ve qué, decidido por la base de datos (RLS), no por la pantalla:
---   · Jefe de Equipo y Administrador: ven y gestionan la ficha de TODOS los
---     agentes.
+--   · Administrador: ve y gestiona la ficha de todos los agentes.
+--   · Jefe de Equipo: hasta ejecutar 14-jefes-de-equipo.sql, la de todos; a
+--     partir de ahí, solo la de los agentes que tiene asignados.
 --   · Cada agente: ve SOLO la suya. Puede añadir sus propias notas y marcar
 --     como hechas sus tareas, pero no cambia sus objetivos ni lo que escribe
 --     dirección. Un agente nunca ve la ficha de otro.
@@ -17,14 +18,25 @@
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- 1 · QUIÉN DIRIGE AGENTES
+-- 1 · QUIÉN DIRIGE A CADA AGENTE
+-- Aquí se crea con la regla básica (admin y cualquier jefe de equipo) SOLO si
+-- no existe todavía: 14-jefes-de-equipo.sql la sustituye por la regla «solo
+-- los agentes que tienes asignados», y volver a ejecutar este archivo no debe
+-- deshacer eso.
 -- -----------------------------------------------------------------------------
-create or replace function public.dirijo_agentes()
-returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce(public.mi_rol() in ('admin', 'manager'), false);
-$$;
-revoke execute on function public.dirijo_agentes() from public;
-grant  execute on function public.dirijo_agentes() to authenticated;
+do $$
+begin
+  if to_regprocedure('public.dirijo_agente(uuid)') is null then
+    execute $f$
+      create function public.dirijo_agente(p_agente uuid)
+      returns boolean language sql stable security definer set search_path = public as $b$
+        select coalesce(public.mi_rol() in ('admin', 'manager'), false);
+      $b$
+    $f$;
+  end if;
+end $$;
+revoke execute on function public.dirijo_agente(uuid) from public;
+grant  execute on function public.dirijo_agente(uuid) to authenticated;
 
 create or replace function public.es_agente(p_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
@@ -109,7 +121,7 @@ begin
   end if;
 
   -- UPDATE
-  if auth.uid() is not null and not public.dirijo_agentes() then
+  if auth.uid() is not null and not public.dirijo_agente(old.agente_id) then
     if new.agente_id    is distinct from old.agente_id
        or new.autor_id     is distinct from old.autor_id
        or new.autor_nombre is distinct from old.autor_nombre
@@ -145,11 +157,11 @@ drop policy if exists agfichas_edita on public.agente_fichas;
 drop policy if exists agfichas_borra on public.agente_fichas;
 
 create policy agfichas_lee on public.agente_fichas
-  for select using (public.dirijo_agentes() or agente_id = auth.uid());
+  for select using (public.dirijo_agente(agente_id) or agente_id = auth.uid());
 create policy agfichas_crea on public.agente_fichas
-  for insert with check (public.dirijo_agentes());
+  for insert with check (public.dirijo_agente(agente_id));
 create policy agfichas_edita on public.agente_fichas
-  for update using (public.dirijo_agentes()) with check (public.dirijo_agentes());
+  for update using (public.dirijo_agente(agente_id)) with check (public.dirijo_agente(agente_id));
 create policy agfichas_borra on public.agente_fichas
   for delete using (public.soy_admin());
 
@@ -159,18 +171,18 @@ drop policy if exists agseg_edita on public.agente_seguimiento;
 drop policy if exists agseg_borra on public.agente_seguimiento;
 
 create policy agseg_lee on public.agente_seguimiento
-  for select using (public.dirijo_agentes() or agente_id = auth.uid());
+  for select using (public.dirijo_agente(agente_id) or agente_id = auth.uid());
 -- Dirección escribe cualquier tipo; el agente, solo notas en su propia ficha.
 create policy agseg_crea on public.agente_seguimiento
   for insert with check (
-    public.dirijo_agentes() or (agente_id = auth.uid() and tipo = 'nota')
+    public.dirijo_agente(agente_id) or (agente_id = auth.uid() and tipo = 'nota')
   );
 create policy agseg_edita on public.agente_seguimiento
-  for update using (public.dirijo_agentes() or agente_id = auth.uid())
-  with check (public.dirijo_agentes() or agente_id = auth.uid());
+  for update using (public.dirijo_agente(agente_id) or agente_id = auth.uid())
+  with check (public.dirijo_agente(agente_id) or agente_id = auth.uid());
 -- Dirección borra cualquier apunte; el agente, solo las notas que escribió él.
 create policy agseg_borra on public.agente_seguimiento
-  for delete using (public.dirijo_agentes() or (agente_id = auth.uid() and autor_id = auth.uid()));
+  for delete using (public.dirijo_agente(agente_id) or (agente_id = auth.uid() and autor_id = auth.uid()));
 
 grant select, insert, update, delete on public.agente_fichas      to authenticated;
 grant select, insert, update, delete on public.agente_seguimiento to authenticated;

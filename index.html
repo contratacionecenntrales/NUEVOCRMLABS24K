@@ -1114,6 +1114,7 @@ a.btn.btn-g:hover{color:#fff}
 /* --- tabla --- */
 .u-fila.apagada td{opacity:.62}
 .u-click{cursor:pointer}
+.sel-sup{min-width:170px;padding:6px 9px;font-size:12px}
 #vc-banda{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;gap:10px;
   align-items:center;padding:9px 12px 9px 14px;border-radius:12px;background:#7C2D12;border:1px solid #FB923C;
   color:#FFEDD5;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:calc(100% - 32px);font-size:13px}
@@ -7399,6 +7400,88 @@ function viewAltaAgentes(v){
   eventosUsuarios(v);
 }
 
+/* ---------------------- HISTORIAL DE «VER COMO» -------------------------
+   Sale de la bitácora: la Edge Function apunta cada entrada con la acción
+   «Entrada con «Ver como»», y la bitácora no se puede reescribir. */
+var VCH = {abierto:false, cargando:false, lista:[], error:''};
+var VCH_ACCION = 'Entrada con «Ver como»';
+function vchAbre(){
+  VCH.abierto = true; VCH.error = '';
+  if(SB.estado !== 'conectado'){
+    VCH.lista = AUDIT.filter(function(a){ return a.accion === VCH_ACCION; })
+      .map(function(a){ return {ts:a.ts, quien:a.quien, a:a.a}; });
+    renderApp(); return;
+  }
+  VCH.cargando = true; renderApp();
+  sbSelect('bitacora', 'accion=eq.'+encodeURIComponent(VCH_ACCION)+'&select=*&order=ts.desc&limit=200')
+  .then(function(r){
+    VCH.cargando = false;
+    if(r && r.ok) VCH.lista = (r.datos || []).map(function(a){
+      return {ts:new Date(a.ts).getTime(), quien:a.actor_nombre || '—', a:a.destino_nombre || '—'}; });
+    else VCH.error = sbMensaje(r);
+    renderApp();
+  });
+}
+function vchHTML(){
+  if(!VCH.abierto) return '';
+  var filas = VCH.lista.map(function(e){
+    return '<tr><td class="tiny nowrap">'+esc(fechaHora(e.ts))+'</td>'+
+      '<td class="small">'+esc(e.quien)+'</td><td class="tiny muted">'+ic('logout',11)+'</td>'+
+      '<td class="small">'+esc(e.a)+'</td></tr>'; }).join('') ||
+    '<tr><td colspan="4" class="muted" style="text-align:center;padding:22px">'+
+      (VCH.cargando ? 'Cargando...' : VCH.error ? esc(VCH.error) : 'Nadie ha usado «Ver como» todavía.')+'</td></tr>';
+  return '<div class="ov" data-ov="vch"><div class="modal" style="max-width:640px">'+
+    '<div class="row" style="justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px">'+
+      '<h3 class="row" style="margin:0;gap:8px;align-items:center;font-size:16px;color:#fff">'+ic('eye',16)+'<span>Historial de «Ver como»</span></h3>'+
+      '<button class="icon-btn" id="vch-x">'+ic('x',16)+'</button></div>'+
+    '<p class="tiny muted" style="margin:0 0 12px">Quién ha entrado en la cuenta de quién, y cuándo. '+
+      'Sale de la bitácora de auditoría, que no se puede modificar.</p>'+
+    '<div style="overflow:auto;max-height:60vh"><table class="tbl"><thead><tr>'+
+      '<th>Fecha</th><th>Quién entró</th><th></th><th>En la cuenta de</th></tr></thead><tbody>'+filas+
+    '</tbody></table></div></div></div>';
+}
+function vchEventos(){
+  qa('[data-vch]').forEach(function(b){ b.onclick = vchAbre; });
+  if(q('#vch-x')) q('#vch-x').onclick = function(){ VCH.abierto = false; renderApp(); };
+  var ov = q('[data-ov="vch"]');
+  if(ov) ov.onclick = function(e){ if(e.target === this){ VCH.abierto = false; renderApp(); } };
+}
+
+/* --------------------------- JERARQUÍA ---------------------------------
+   Super Administrador (raíz) > Administrador > Jefe de Equipo > el resto.
+   El superior siempre tiene más rango; la base de datos lo vuelve a
+   comprobar (14-superiores.sql). */
+function rangoU(u){
+  return !u ? 0 : u.raiz ? 4 : u.rol === 'admin' ? 3 : u.rol === 'manager' ? 2 : 1;
+}
+function superioresPosibles(u){
+  return USUARIOS.filter(function(x){
+    return x.id !== u.id && x.est === 'Activo' && rangoU(x) > rangoU(u);
+  }).sort(function(a,b){ return rangoU(b) - rangoU(a) || a.n.localeCompare(b.n); });
+}
+function etiquetaRol(u){ return esRaiz(u) ? 'Super Administrador' : ROLES[u.rol].label; }
+function yoUsuario(){
+  var id = (typeof SB !== 'undefined' && SB.perfil) ? SB.perfil.id : null;
+  return (id && usuarioPorId(id)) || usuarioPorMail(S.email || '') || null;
+}
+/* Misma regla que la Edge Function: a tu cargo, o por rango. */
+function vcPuede(u){
+  var yo = yoUsuario();
+  if(!u || !yo || esRaiz(u) || u.id === yo.id || u.est !== 'Activo') return false;
+  if(esRaiz(yo)) return true;
+  if(u.sup && u.sup === yo.id) return true;
+  return yo.rol === 'admin' && u.rol !== 'admin';
+}
+function selSuperior(u){
+  if(esRaiz(u)) return '<span class="tiny muted">— (lo más alto)</span>';
+  var ops = superioresPosibles(u);
+  return '<select class="inp u-sel sel-sup" data-u-sup="'+u.id+'">'+
+    '<option value="">Sin superior</option>'+
+    ops.map(function(x){
+      return '<option value="'+x.id+'"'+(u.sup===x.id?' selected':'')+'>'+esc(x.n)+' · '+esc(etiquetaRol(x))+'</option>';
+    }).join('')+'</select>';
+}
+
 function viewUsers(v){
   if(S.role !== 'admin' && puedoAltaAgentes()){ viewAltaAgentes(v); return; }
   if(S.role !== 'admin'){
@@ -7435,7 +7518,8 @@ function viewUsers(v){
       '<td class="tiny muted nowrap">'+esc(u.tel || '—')+
         (u.ext ? '<div class="tiny" style="color:var(--txt-3)">ext. '+esc(u.ext)+'</div>' : '')+'</td>'+
       '<td><span class="chip '+(u.rol==='admin'?'violet':u.rol==='manager'?'blue':'')+'">'+
-        esc(ROLES[u.rol].label)+'</span></td>'+
+        esc(etiquetaRol(u))+'</span></td>'+
+      '<td>'+selSuperior(u)+'</td>'+
       '<td>'+(u.google
         ? '<span class="row" style="gap:6px">'+googleG(14)+'<span class="tiny">Autorizado</span></span>'
         : '<span class="tiny muted">Solo contraseña</span>')+'</td>'+
@@ -7448,8 +7532,8 @@ function viewUsers(v){
       '<td style="text-align:right"><div class="row" style="gap:5px;justify-content:flex-end">'+
         '<button class="btn btn-s btn-xs" data-u-ver="'+u.id+'" title="Ver cuenta">'+ic('eye',12)+' Ver</button>'+
         (u.rol==='commercial' ? '<button class="btn btn-s btn-xs" data-u-agente="'+u.id+'" title="Ficha de agente">'+
-          ic('user',12)+' Ficha</button>'+
-          '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'" title="Entrar en su cuenta">'+
+          ic('user',12)+' Ficha</button>' : '')+
+        (vcPuede(u) ? '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'" title="Entrar en su cuenta">'+
           ic('logout',12)+' Ver como</button>' : '')+
         '<button class="btn btn-s btn-xs" data-u-clave="'+u.id+'" title="Restablecer contraseña">'+ic('refresh',12)+'</button>'+
         '<button class="btn btn-s btn-xs" data-u-goo="'+u.id+'" title="Permitir o revocar Google">'+googleG(12)+'</button>'+
@@ -7457,7 +7541,7 @@ function viewUsers(v){
           '<button class="btn btn-s btn-xs" data-u-del="'+u.id+'" title="Eliminar cuenta">'+ic('x',12)+'</button>')+
         (esRaiz(u) ? '<span class="candado" title="'+esc(vetoRaiz(u,'borrar'))+'">'+ic('shield',12)+'</span>' : '')+
       '</div></td></tr>';
-  }).join('') || '<tr><td colspan="7" class="muted" style="text-align:center;padding:26px">'+
+  }).join('') || '<tr><td colspan="8" class="muted" style="text-align:center;padding:26px">'+
                  'Ningún usuario coincide con la búsqueda.</td></tr>';
 
   var kpis = [
@@ -7482,7 +7566,8 @@ function viewUsers(v){
         '<span class="chip red">Registro público desactivado</span></div>'+
         '<h3 style="font-size:18px">Usuarios y accesos</h3>'+
         '<p>Nadie puede darse de alta por su cuenta. Cada acceso lo creas tú aquí.</p></div>'+
-      '<button class="btn btn-p" id="u-nuevo">'+ic('userPlus',16)+' Dar de alta usuario</button></div>'+
+      '<div class="row" style="gap:8px"><button class="btn btn-s" data-vch="1">'+ic('eye',15)+' Historial de «Ver como»</button>'+
+      '<button class="btn btn-p" id="u-nuevo">'+ic('userPlus',16)+' Dar de alta usuario</button></div></div>'+
     '<div class="row u-filtros">'+
       '<div class="search" style="flex:1;min-width:220px">'+ic('search',15)+
         '<input id="u-find" placeholder="Nombre, correo, teléfono, rol o n.º de relación..." '+
@@ -7505,7 +7590,7 @@ function viewUsers(v){
 
   '<div class="card" style="padding:0;overflow:hidden">'+
     '<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
-      '<th>Usuario</th><th>Teléfono</th><th>Rol</th><th>Autenticación</th><th>Estado</th>'+
+      '<th>Usuario</th><th>Teléfono</th><th>Rol</th><th>Superior</th><th>Autenticación</th><th>Estado</th>'+
       '<th>Último acceso</th><th></th></tr></thead><tbody>'+filas+'</tbody></table></div></div>'+
 
   raizHTML()+
@@ -7522,9 +7607,10 @@ function viewUsers(v){
       '<span class="mono">labs24k-api-blindada</span>, que necesita alojamiento con Node.js. '+
       'Hasta desplegarla, trata este portal como una recepción, no como una cerradura.</p></div></div>'+
   '</div>'+
-  altaHTML() + credencialesHTML() + borradoHTML() + detalleHTML();
+  altaHTML() + credencialesHTML() + borradoHTML() + detalleHTML() + vchHTML();
 
   eventosUsuarios(v);
+  vchEventos();
   detalleEventos();
 }
 
@@ -7615,6 +7701,11 @@ function altaHTML(){
         '<div class="row" style="gap:8px"><input class="inp mono" id="nu-rel" value="'+esc(F.rel)+'" style="flex:1">'+
         '<button class="btn btn-s" id="nu-rel-gen" title="Generar otro">'+ic('refresh',14)+'</button></div></div>'+
     '</div>'+
+    (S.role === 'admin' ? '<div class="field"><label class="f">Superior (jefe de equipo / responsable)</label>'+
+      '<select class="inp" id="nu-sup"><option value="">Yo mismo</option>'+
+        superioresPosibles({id:null, rol:F.rol, raiz:false}).map(function(x){
+          return '<option value="'+x.id+'"'+(F.sup===x.id?' selected':'')+'>'+esc(x.n)+' · '+esc(etiquetaRol(x))+'</option>';
+        }).join('')+'</select></div>' : '')+
     '<div class="field"><label class="f">Contraseña inicial</label>'+
       '<div class="row" style="gap:8px"><input class="inp mono" id="nu-pass" value="'+esc(F.pass)+'" style="flex:1">'+
       '<button class="btn btn-s" id="nu-pass-gen">'+ic('refresh',14)+' Generar</button></div>'+
@@ -7686,7 +7777,7 @@ function eventosUsuarios(v){
 
   q('#u-nuevo').onclick = function(){
     USU.form = {nom:'', ape:'', mail:'', pre:'+34', num:'', ext:'',
-                rol:'commercial', rel:nuevoRelacion(), pass:claveFuerte(), google:true};
+                rol:'commercial', rel:nuevoRelacion(), pass:claveFuerte(), google:true, sup:''};
     renderApp(); };
 
   qa('[data-u-cerrar]').forEach(function(b){ b.onclick = function(){
@@ -7703,6 +7794,7 @@ function eventosUsuarios(v){
     F.pre=q('#nu-pre').value; F.num=q('#nu-num').value; F.ext=q('#nu-ext').value;
     F.rol=q('#nu-rol').value; F.rel=q('#nu-rel').value; F.pass=q('#nu-pass').value;
     if(S.role !== 'admin') F.rol = 'commercial';
+    F.sup = q('#nu-sup') ? q('#nu-sup').value : '';
   }
   if(q('#nu-rol'))      q('#nu-rol').onchange   = function(){ leeAlta(); setTimeout(renderApp,0); };
   if(q('#nu-pass'))     q('#nu-pass').onchange  = function(){ leeAlta(); setTimeout(renderApp,0); };
@@ -7731,10 +7823,11 @@ function eventosUsuarios(v){
        única que tiene la clave capaz de dar de alta en Auth. */
     sbAltaUsuario({nombre:u.nom, apellidos:u.ape, email:u.mail, prefijo:u.pre,
                    telefono:u.num, extension:u.ext, rol:u.rol, google:u.google,
-                   password:u.pass})
+                   password:u.pass, superior_id:(F.sup || null)})
     .then(function(r){
       if(!r.ok){ toast(r.mensaje); return; }
       if(r.usuario){ u = deFila(r.usuario, USUARIOS.length); u.pass = r.password; }
+      else { var yo0 = yoUsuario(); u.sup = F.sup || (yo0 ? yo0.id : null); }
       USUARIOS.push(u);
       auditar(u, 'Cuenta creada', ROLES[u.rol].label+' · relación '+u.rel+
         (u.google ? ' · Google autorizado' : ' · solo contraseña'));
@@ -7813,6 +7906,18 @@ function eventosUsuarios(v){
     USU.det = b.dataset.uVer; USU.tab = 'info'; USU.verTok = false; renderApp(); }; });
   qa('[data-vercomo]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation(); vcEntra(usuarioPorId(b.dataset.vercomo)); }; });
+  qa('[data-u-sup]').forEach(function(sel){ sel.onchange = function(){
+    var u = usuarioPorId(sel.dataset.uSup), ant = u.sup, nuevo = sel.value || null;
+    if(!u.conSup && SB.estado === 'conectado'){
+      toast('Falta ejecutar 14-superiores.sql en Supabase.'); setTimeout(renderApp,0); return; }
+    u.sup = nuevo;
+    sbGuardaUsuario(u).then(function(r){
+      if(!r.ok){ u.sup = ant; toast(r.mensaje); setTimeout(renderApp,0); return; }
+      var s2 = nuevo ? usuarioPorId(nuevo) : null;
+      auditar(u, 'Superior asignado', s2 ? s2.n+' · '+etiquetaRol(s2) : 'Sin superior');
+      toast(u.n+' · '+(s2 ? 'superior: '+s2.n : 'sin superior')+'.');
+      setTimeout(renderApp,0);
+    }); }; });
   qa('[data-u-agente]').forEach(function(b){ b.onclick = function(e){
     e.stopPropagation(); S.view = 'equipo'; agAbre(b.dataset.uAgente); }; });
   /* Un clic en cualquier parte de la fila abre la cuenta; los botones, el
@@ -8569,6 +8674,7 @@ function deFila(f, i){
     google: !!f.google, dobleF: !!f.doble_factor, cambiar: !!f.debe_cambiar,
     avatar: f.avatar_url || null, tok: f.api_token || '',
     modvis: Array.isArray(f.modulos_visibles) ? f.modulos_visibles : null,
+    sup: f.superior_id || null, conSup: Object.prototype.hasOwnProperty.call(f, 'superior_id'),
     rolPersId: f.rol_personalizado_id || null,
     alta: f.alta ? new Date(f.alta).toLocaleDateString('es-ES') : '',
     ultMs: f.ultimo_acceso ? new Date(f.ultimo_acceso).getTime() : null,
@@ -8603,7 +8709,7 @@ function deFila(f, i){
 }
 
 function aFila(u){
-  return {
+  var fila = {
     nombre: u.nom, apellidos: u.ape, email: u.mail,
     prefijo: u.pre, telefono: u.num, extension: u.ext,
     rol: u.rol, estado: u.est, google: u.google,
@@ -8622,6 +8728,10 @@ function aFila(u){
                        altas:u.pref.notif.altas, incidencias:u.pref.notif.incidencias}
     }
   };
+  /* Solo si la base ya tiene la columna (14-superiores.sql): si no, el
+     guardado entero fallaría por un campo desconocido. */
+  if(u.conSup) fila.superior_id = u.sup || null;
+  return fila;
 }
 
 /* --------------------------- CARGA DEL PANEL ---------------------------- */
@@ -8938,7 +9048,15 @@ function agYoId(){
   if(agConectado() && SB.perfil) return SB.perfil.id;
   var u = usuarioPorMail(S.email || ''); return u ? u.id : null;
 }
-function agAgentes(){ return USUARIOS.filter(function(u){ return u.rol === 'commercial'; }); }
+function agAgentes(){
+  var ag = USUARIOS.filter(function(u){ return u.rol === 'commercial'; });
+  if(S.role === 'admin') return ag;
+  /* Jefe de Equipo: solo los que tiene a su cargo (14-superiores.sql). Si
+     la columna aún no existe en la base, se ven todos, como antes. */
+  var yo = yoUsuario(), hayJerarquia = USUARIOS.some(function(u){ return u.conSup; });
+  if(!yo || (SB.estado === 'conectado' && !hayJerarquia)) return ag;
+  return ag.filter(function(u){ return u.sup === yo.id; });
+}
 function agFichaVacia(id){
   return {agente_id:id, zona:'', equipo:'', especialidad:'', incorporacion:'',
           objetivo_mensual:'', objetivos:'', plan_accion:'', formacion:'',
@@ -9168,8 +9286,8 @@ function agFichaModal(){
         '</div>'+
         '<div class="tiny muted trunc">'+esc(u.mail)+' · '+esc(u.tel || '')+
           ' · relación <span class="mono">'+esc(u.rel)+'</span></div></div></div>'+
-      '<div class="row" style="gap:8px"><button class="btn btn-s btn-xs" data-vercomo="'+u.id+'">'+
-        ic('logout',12)+' Ver como</button>'+
+      '<div class="row" style="gap:8px">'+(vcPuede(u) ? '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'">'+
+        ic('logout',12)+' Ver como</button>' : '')+
       '<button class="icon-btn" id="ag-x">'+ic('x',16)+'</button></div></div>'+
     '<div class="ft-body"><div class="ft-side">'+agNav()+'</div>'+
       '<div class="ft-main">'+agCuerpo(u, true)+'</div></div>'+
@@ -9239,8 +9357,8 @@ function viewEquipo(v){
       '<td>'+(AG.fichas[u.id] ? '<span class="chip green">Al día</span>' : '<span class="chip amber">Por crear</span>')+'</td>'+
       '<td style="text-align:right"><div class="row" style="gap:5px;justify-content:flex-end">'+
         '<button class="btn btn-s btn-xs" data-ag-ver="'+u.id+'">'+ic('eye',12)+' Abrir ficha</button>'+
-        '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'" title="Entrar en su cuenta">'+
-          ic('logout',12)+' Ver como</button></div></td>'+
+        (vcPuede(u) ? '<button class="btn btn-s btn-xs" data-vercomo="'+u.id+'" title="Entrar en su cuenta">'+
+          ic('logout',12)+' Ver como</button>' : '')+'</div></td>'+
     '</tr>';
   }).join('') || '<tr><td colspan="6" class="muted" style="text-align:center;padding:26px">'+
     (AG.cargando ? 'Cargando fichas...' : todos.length ? 'Ningún agente coincide con la búsqueda.'
@@ -9261,7 +9379,8 @@ function viewEquipo(v){
         '<h3 style="font-size:18px">Fichas de agentes</h3>'+
         '<p>Pincha en un agente para abrir su ficha: objetivos, plan de acción, tareas y seguimiento. '+
         'Cada agente ve la suya en «Mi ficha»; nunca la de otro.</p></div>'+
-      (agConectado() ? '<button class="btn btn-s" id="ag-recarga">'+ic('refresh',14)+' Actualizar</button>' : '')+'</div>'+
+      '<div class="row" style="gap:8px"><button class="btn btn-s" data-vch="1">'+ic('eye',14)+' Historial de «Ver como»</button>'+
+      (agConectado() ? '<button class="btn btn-s" id="ag-recarga">'+ic('refresh',14)+' Actualizar</button>' : '')+'</div></div>'+
     '<div class="search" style="width:100%;max-width:380px;margin:14px 0">'+ic('search',15)+
       '<input id="ag-find" placeholder="Nombre, correo, zona o equipo..." value="'+esc(AG.filtro)+'"></div>'+
     (AG.error ? '<div class="nota" style="margin-bottom:12px">'+ic('alert',15)+'<span>'+esc(AG.error)+
@@ -9269,7 +9388,7 @@ function viewEquipo(v){
     '<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+
       '<th>Agente</th><th>Zona / equipo</th><th>Objetivo mensual</th><th>Estado</th><th>Ficha</th><th></th>'+
       '</tr></thead><tbody>'+filas+'</tbody></table></div>'+
-  '</div>'+ agFichaModal();
+  '</div>'+ agFichaModal() + vchHTML();
 
   q('#ag-find').onchange = function(){ AG.filtro = this.value; setTimeout(renderApp,0); };
   if(q('#ag-recarga')) q('#ag-recarga').onclick = function(){
@@ -9281,6 +9400,7 @@ function viewEquipo(v){
     if(e.target.closest('button, select, input, a')) return;
     agAbre(tr.dataset.agFila); }; });
   if(AG.det) agEventos(AG.det);
+  vchEventos();
 }
 
 /* -------------------- VISTA · MI FICHA (el propio agente) ---------------- */

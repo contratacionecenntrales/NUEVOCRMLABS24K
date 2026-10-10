@@ -11,10 +11,12 @@
 //   El panel llama a esta función con el token de sesión del administrador.
 //   Lo primero que hace la función es comprobar quién llama y si es admin.
 //
-//   Dos excepciones, ambas limitadas a cuentas de agente (Gestión Comercial):
-//   · quien tenga el permiso «sys.alta_agentes» puede usar el ALTA;
-//   · el Jefe de Equipo (y el admin) puede usar VER COMO para entrar en la
-//     cuenta de un agente. Queda anotado en la bitácora.
+//   Dos excepciones:
+//   · quien tenga el permiso «sys.alta_agentes» puede usar el ALTA, solo
+//     para cuentas de agente (Gestión Comercial);
+//   · VER COMO: cualquiera puede entrar en la cuenta de quien tiene a su
+//     cargo (perfiles.superior_id); el admin, en cualquiera de rango menor;
+//     el Super Administrador de raíz, en cualquiera. Queda en la bitácora.
 //   Contraseñas y borrados siguen siendo exclusivos del admin.
 //
 // DESPLIEGUE
@@ -25,7 +27,7 @@
 //   POST   /admin-usuarios              alta de usuario
 //   POST   /admin-usuarios/:id/password restablecer contraseña
 //   DELETE /admin-usuarios/:id          eliminar cuenta
-//   POST   /admin-usuarios/:id/ver-como entrar en la cuenta de un agente
+//   POST   /admin-usuarios/:id/ver-como entrar en la cuenta de alguien a tu cargo
 // =============================================================================
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
@@ -140,9 +142,9 @@ Deno.serve(async (req) => {
   const altaDelegada = !esAdmin && activo && req.method === 'POST' && !id &&
                        quien.permisos?.['sys.alta_agentes'] === true;
 
-  // Ver como: jefe de equipo o admin, solo sobre agentes (se comprueba abajo).
-  const verComo = activo && (quien.rol === 'admin' || quien.rol === 'manager') &&
-                  req.method === 'POST' && !!id && accion === 'ver-como';
+  // Ver como: la regla de quién puede entrar en qué cuenta se comprueba abajo,
+  // con la ficha del destino delante.
+  const verComo = activo && req.method === 'POST' && !!id && accion === 'ver-como';
 
   if (!esAdmin && !altaDelegada && !verComo) {
     console.warn('Acceso denegado a admin-usuarios', { usuario: sesion.user.id, rol: quien?.rol });
@@ -175,14 +177,20 @@ Deno.serve(async (req) => {
     // =====================================================================
     if (verComo) {
       const { data: destino } = await admin.from('perfiles')
-        .select('id, nombre, apellidos, email, rol, estado, raiz').eq('id', id).single();
+        .select('id, nombre, apellidos, email, rol, estado, raiz, superior_id').eq('id', id).single();
       if (!destino) return error('Usuario no encontrado.', 'NO_ENCONTRADO', 404);
-      if (destino.rol !== 'commercial' || destino.raiz) {
-        return error('Solo se puede entrar en cuentas de agente (Gestión Comercial).', 'NO_ES_AGENTE', 403);
-      }
       if (destino.id === quien.id) return error('Ya estás en tu cuenta.', 'MISMA_CUENTA', 409);
+      if (destino.raiz) {
+        return error('En la cuenta del Super Administrador no se puede entrar.', 'RAIZ_PROTEGIDA', 403);
+      }
+      const aSuCargo = destino.superior_id === quien.id;
+      const porRango = quien.raiz || (quien.rol === 'admin' && destino.rol !== 'admin');
+      if (!aSuCargo && !porRango) {
+        return error('Solo puedes entrar en las cuentas de las personas que tienes a tu cargo.',
+                     'NO_ES_DE_TU_EQUIPO', 403);
+      }
       if (destino.estado !== 'Activo') {
-        return error('La cuenta de ese agente no está activa.', 'AGENTE_INACTIVO', 409);
+        return error('Esa cuenta no está activa.', 'CUENTA_INACTIVA', 409);
       }
 
       const { data: enlace, error: eEnlace } = await admin.auth.admin.generateLink({
@@ -204,7 +212,7 @@ Deno.serve(async (req) => {
 
       const nombreDestino = `${destino.nombre} ${destino.apellidos ?? ''}`.trim();
       await anota({ id: destino.id, nombre: nombreDestino }, 'Entrada con «Ver como»',
-                  `${quien.nombre} ${quien.apellidos ?? ''}`.trim() + ' ha entrado en la cuenta del agente.');
+                  `${quien.nombre} ${quien.apellidos ?? ''}`.trim() + ' ha entrado en su cuenta.');
 
       const s = canje.session;
       return responde({
@@ -231,6 +239,27 @@ Deno.serve(async (req) => {
       }
       if (b.prefijo && !/^\+\d{1,3}$/.test(String(b.prefijo))) {
         return error('El prefijo debe ser internacional, como +34.', 'PREFIJO_INVALIDO');
+      }
+
+      // Superior: en un alta delegada, quien la hace; si la hace un admin, el
+      // que elija o, si no elige, él mismo. La base de datos comprueba que el
+      // superior tenga más rango (14-superiores.sql).
+      let superiorId: string | null = quien.id;
+      if (esAdmin && b.superior_id) {
+        const { data: sup } = await admin.from('perfiles')
+          .select('id, estado').eq('id', String(b.superior_id)).maybeSingle();
+        if (!sup || sup.estado !== 'Activo') return error('El superior elegido no es válido.', 'SUPERIOR_INVALIDO');
+        superiorId = sup.id;
+      }
+      // El superior tiene que tener más rango; si no (un admin que da de alta
+      // a otro admin), la nueva cuenta cuelga del Super Administrador.
+      const rango = (rol: string, raiz: boolean) =>
+        raiz ? 4 : rol === 'admin' ? 3 : rol === 'manager' ? 2 : 1;
+      const { data: supFila } = await admin.from('perfiles')
+        .select('rol, raiz').eq('id', superiorId).maybeSingle();
+      if (!supFila || rango(supFila.rol, supFila.raiz) <= rango(b.rol, false)) {
+        const { data: raiz } = await admin.from('perfiles').select('id').eq('raiz', true).maybeSingle();
+        superiorId = raiz?.id ?? null;
       }
 
       const { data: yaExiste } = await admin.from('perfiles').select('id').eq('email', email).maybeSingle();
@@ -264,6 +293,7 @@ Deno.serve(async (req) => {
         google: b.google === true,
         estado: 'Activo',
         debe_cambiar: true,
+        superior_id: superiorId,
         permisos,
         api_token: 'lk_' + crypto.randomUUID().replace(/-/g, '')
       }).select().single();
