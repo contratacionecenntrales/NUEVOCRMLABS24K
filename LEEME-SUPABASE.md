@@ -26,6 +26,7 @@ de notas, copia **todo** el contenido, pégalo y pulsa **Run**. En este orden:
 | 14 | `14-superiores.sql` | Superior de cada usuario (jerarquía): el jefe ve solo a sus agentes y «Ver como» sigue la jerarquía. Pasa a María a Administradora |
 | 15 | `15-empresa-cif.sql` | Empresa y CIF en la ficha de cada usuario |
 | 16 | `16-alta-por-sql.sql` | Alta de usuarios desde la base de datos (Administrador: cualquier rol; Jefe de Equipo: Comercial y Back Office a su cargo). El panel la usa antes que la Edge Function |
+| 17 | `17-jefe-gestiona-equipo.sql` | El Jefe de Equipo edita, cambia el rol (Comercial / Back Office) y el superior, bloquea, restablece la contraseña y borra a su equipo |
 
 Con el **1** y el **2** ya entras. El **6** es de seguridad y no es opcional.
 Los demás son para los módulos correspondientes.

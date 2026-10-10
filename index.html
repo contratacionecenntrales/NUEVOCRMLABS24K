@@ -7490,6 +7490,17 @@ function vcPuede(u){
   if(u.sup && u.sup === yo.id) return true;
   return yo.rol === 'admin' && u.rol !== 'admin';
 }
+/* Las personas que tiene a su cargo un jefe (sin contarse a sí mismo). */
+function equipoDe(yo){
+  if(!yo) return [];
+  return USUARIOS.filter(function(u){ return u.id !== yo.id && u.sup === yo.id && rangoU(u) < rangoU(yo); });
+}
+/* Roles que quien edita puede poner a esta persona. */
+function rolesEditables(u){
+  if(S.role === 'admin') return Object.keys(ROLES);
+  var r = rolesAlta();
+  return r.indexOf(u.rol) > -1 ? r : [u.rol].concat(r);
+}
 function selSuperior(u){
   if(esRaiz(u)) return '<span class="tiny muted">— (lo más alto)</span>';
   var ops = superioresPosibles(u);
@@ -7501,8 +7512,12 @@ function selSuperior(u){
 }
 
 function viewUsers(v){
-  if(S.role !== 'admin' && puedoAltaAgentes()){ viewAltaAgentes(v); return; }
-  if(S.role !== 'admin'){
+  /* El Jefe de Equipo ve esta misma pantalla, limitada a su equipo
+     (17-jefe-gestiona-equipo.sql). Quien solo tiene el permiso de alta,
+     la vista reducida de alta de agentes. */
+  var jefe = S.role === 'manager';
+  if(S.role !== 'admin' && !jefe && puedoAltaAgentes()){ viewAltaAgentes(v); return; }
+  if(S.role !== 'admin' && !jefe){
     v.innerHTML = '<div class="card" style="text-align:center;padding:44px">'+
       '<div class="ico-box red" style="width:52px;height:52px;margin:0 auto 14px">'+ic('shield',24)+'</div>'+
       '<h3 style="margin:0 0 6px;color:#fff">Sección restringida</h3>'+
@@ -7510,8 +7525,9 @@ function viewUsers(v){
     return;
   }
 
-  var lista = USUARIOS.filter(function(u){
-    var t = (u.n+' '+u.mail+' '+u.tel+' '+u.rel+' '+ROLES[u.rol].label).toLowerCase();
+  var base = jefe ? equipoDe(yoUsuario()) : USUARIOS;
+  var lista = base.filter(function(u){
+    var t = (u.n+' '+u.mail+' '+u.tel+' '+u.rel+' '+ROLES[u.rol].label+' '+(u.emp||'')+' '+(u.cif||'')).toLowerCase();
     if(USU.filtro && t.indexOf(USU.filtro.toLowerCase().trim()) < 0) return false;
     if(USU.rol && u.rol !== USU.rol) return false;
     if(USU.est && u.est !== USU.est) return false;
@@ -7539,7 +7555,7 @@ function viewUsers(v){
         (u.cif ? '<div class="tiny mono" style="color:var(--txt-3)">'+esc(u.cif)+'</div>' : '')+'</td>'+
       '<td>'+(esRaiz(u)
         ? '<span class="chip violet">'+esc(etiquetaRol(u))+'</span>'
-        : '<select class="inp u-sel sel-sup" data-u-rol="'+u.id+'">'+Object.keys(ROLES).map(function(k){
+        : '<select class="inp u-sel sel-sup" data-u-rol="'+u.id+'">'+rolesEditables(u).map(function(k){
             return '<option value="'+k+'"'+(u.rol===k?' selected':'')+'>'+esc(ROLES[k].label)+'</option>'; }).join('')+
           '</select>')+'</td>'+
       '<td>'+selSuperior(u)+'</td>'+
@@ -7560,7 +7576,7 @@ function viewUsers(v){
           ic('logout',12)+' Ver como</button>' : '')+
         '<button class="btn btn-s btn-xs" data-u-clave="'+u.id+'" title="Restablecer contraseña">'+ic('refresh',12)+'</button>'+
         '<button class="btn btn-s btn-xs" data-u-goo="'+u.id+'" title="Permitir o revocar Google">'+googleG(12)+'</button>'+
-        (u.rol==='admin' ? '' :
+        (u.rol==='admin' || esRaiz(u) ? '' :
           '<button class="btn btn-s btn-xs" data-u-del="'+u.id+'" title="Eliminar cuenta">'+ic('x',12)+'</button>')+
         (esRaiz(u) ? '<span class="candado" title="'+esc(vetoRaiz(u,'borrar'))+'">'+ic('shield',12)+'</span>' : '')+
       '</div></td></tr>';
@@ -7568,11 +7584,11 @@ function viewUsers(v){
                  'Ningún usuario coincide con la búsqueda.</td></tr>';
 
   var kpis = [
-    ['Usuarios dados de alta', String(USUARIOS.length), 'users', 'blue'],
-    ['Cuentas activas',   String(USUARIOS.filter(function(u){return u.est==='Activo';}).length), 'check','green'],
-    ['Con acceso por Google', String(USUARIOS.filter(function(u){return u.google;}).length), 'globe','violet'],
-    ['Suspendidas',       String(USUARIOS.filter(function(u){return u.est==='Suspendido';}).length), 'alert','amber'],
-    ['Dadas de baja',     String(USUARIOS.filter(function(u){return u.est==='Dado de baja';}).length), 'x','red']
+    ['Usuarios dados de alta', String(base.length), 'users', 'blue'],
+    ['Cuentas activas',   String(base.filter(function(u){return u.est==='Activo';}).length), 'check','green'],
+    ['Con acceso por Google', String(base.filter(function(u){return u.google;}).length), 'globe','violet'],
+    ['Suspendidas',       String(base.filter(function(u){return u.est==='Suspendido';}).length), 'alert','amber'],
+    ['Dadas de baja',     String(base.filter(function(u){return u.est==='Dado de baja';}).length), 'x','red']
   ];
 
   v.innerHTML =
@@ -7585,15 +7601,19 @@ function viewUsers(v){
   '<div class="card" style="margin-bottom:16px">'+
     '<div class="card-h" style="margin:0;flex-wrap:wrap">'+
       '<div><div class="row" style="gap:8px;margin-bottom:6px">'+
-        '<span class="chip blue">Acceso privado</span>'+
-        '<span class="chip red">Registro público desactivado</span></div>'+
-        '<h3 style="font-size:18px">Usuarios y accesos</h3>'+
-        '<p>Nadie puede darse de alta por su cuenta. Cada acceso lo creas tú aquí.</p></div>'+
+        (jefe ? '<span class="chip blue">Mi equipo</span></div>'+
+          '<h3 style="font-size:18px">Usuarios de mi equipo</h3>'+
+          '<p>Las personas que tienes a tu cargo. Puedes darlas de alta, cambiarles el rol (Gestión Comercial o '+
+          'Back Office) y el superior, bloquearlas, restablecer su contraseña, borrarlas y entrar con «Ver como».</p></div>'
+        : '<span class="chip blue">Acceso privado</span>'+
+          '<span class="chip red">Registro público desactivado</span></div>'+
+          '<h3 style="font-size:18px">Usuarios y accesos</h3>'+
+          '<p>Nadie puede darse de alta por su cuenta. Cada acceso lo creas tú aquí.</p></div>')+
       '<div class="row" style="gap:8px"><button class="btn btn-s" data-vch="1">'+ic('eye',15)+' Historial de «Ver como»</button>'+
       '<button class="btn btn-p" id="u-nuevo">'+ic('userPlus',16)+' Dar de alta usuario</button></div></div>'+
     '<div class="row u-filtros">'+
       '<div class="search" style="flex:1;min-width:220px">'+ic('search',15)+
-        '<input id="u-find" placeholder="Nombre, correo, teléfono, rol o n.º de relación..." '+
+        '<input id="u-find" placeholder="Nombre, correo, teléfono, empresa, CIF o n.º de relación..." '+
         'value="'+esc(USU.filtro)+'"></div>'+
       '<select class="inp u-sel" id="u-frol"><option value="">Todos los roles</option>'+
         Object.keys(ROLES).map(function(k){
@@ -7607,7 +7627,7 @@ function viewUsers(v){
         ? '<button class="btn btn-s" id="u-limpia">'+ic('x',13)+' Limpiar</button>' : '')+
       '<button class="btn btn-s" id="u-exp">'+ic('download',13)+' Exportar CSV</button>'+
     '</div>'+
-    '<div class="tiny muted" style="margin-top:10px">'+lista.length+' de '+USUARIOS.length+
+    '<div class="tiny muted" style="margin-top:10px">'+lista.length+' de '+base.length+
       ' cuentas mostradas</div>'+
   '</div>'+
 
@@ -7616,7 +7636,7 @@ function viewUsers(v){
       '<th>Usuario</th><th>Teléfono</th><th>Empresa / CIF</th><th>Rol</th><th>Superior</th><th>Autenticación</th><th>Estado</th>'+
       '<th>Último acceso</th><th></th></tr></thead><tbody>'+filas+'</tbody></table></div></div>'+
 
-  raizHTML()+
+  (jefe ? '' : raizHTML())+
   bitacoraHTML()+
 
   '<div class="card" style="margin-top:16px;border-left:3px solid var(--amber)">'+
@@ -8069,6 +8089,9 @@ function fichaInfo(u){
       ? '<input class="inp" value="'+esc(u.mail)+'" readonly>'+
         '<div class="tiny muted candado-nota">'+ic('shield',12)+
           '<span>'+esc(vetoRaiz(u,'mail'))+' Se define en la semilla del servidor.</span></div>'
+      : S.role !== 'admin'
+      ? '<input class="inp" value="'+esc(u.mail)+'" readonly>'+
+        '<div class="tiny muted" style="margin-top:6px">El correo es su usuario de acceso: lo cambia un Administrador.</div>'
       : '<input class="inp" id="fi-mail" type="email" value="'+esc(u.mail)+'">'+
         '<div class="tiny muted" style="margin-top:6px">Es su identificador de acceso. Si lo cambias, '+
           'la autorización de Google deja de coincidir y habrá que volver a concederla.</div>')+'</div>'+
@@ -8124,7 +8147,7 @@ function fichaPermisos(u){
         ? '<input class="inp" value="Administrador · SYSTEM_ADMIN_ROOT" readonly>'+
           '<div class="tiny muted candado-nota">'+ic('shield',12)+
             '<span>'+esc(vetoRaiz(u,'rol'))+'</span></div>'
-        : '<select class="inp" id="fp-rol">'+Object.keys(ROLES).map(function(k){
+        : '<select class="inp" id="fp-rol">'+rolesEditables(u).map(function(k){
             return '<option value="'+k+'"'+(u.rol===k?' selected':'')+'>'+ROLES[k].label+'</option>'; }).join('')+
           '</select><div class="tiny muted" style="margin-top:6px">'+esc(ROLES[u.rol].desc)+'</div>')+
       (raiz ? '' : '<label class="f" style="margin-top:12px">Superior (jefe de equipo / responsable)</label>'+
@@ -8363,6 +8386,7 @@ function detalleEventos(){
     u.perms = permisosDeRol(u.rol); toast('Excepciones eliminadas.'); renderApp(); };
   qa('[data-perm]').forEach(function(el){ el.onclick = function(){
     if(esRaiz(u)){ toast(vetoRaiz(u,'permisos')); return; }
+    if(S.role !== 'admin'){ toast('Los permisos sueltos solo los ajusta un Administrador; siguen al rol.'); return; }
     if(u.rol === 'admin'){ toast('El administrador conserva todos los permisos.'); return; }
     var k = el.dataset.perm; u.perms[k] = !u.perms[k]; renderApp(); }; });
 
@@ -9085,19 +9109,31 @@ function sbAltaUsuario(datos){
   });
 }
 
+/* Contraseña y borrado van primero por la base de datos
+   (17-jefe-gestiona-equipo.sql) y, si esas funciones no están instaladas,
+   por la Edge Function, como antes. */
+function sbRpcOFuncion(rpc, args, ruta, metodo, convierte){
+  return sbConSesion(function(){
+    return sbFetch('/rest/v1/rpc/' + rpc, {method:'POST', body: args});
+  }).then(function(r){
+    if(r.ok) return convierte(null);
+    var d = r.datos || {};
+    if(!(r.estado === 404 || d.code === 'PGRST202' || d.code === '42883')) return {ok:false, mensaje: sbMensaje(r)};
+    return sbFuncion(ruta, metodo, metodo === 'DELETE' ? undefined : {}).then(function(r2){
+      return r2.ok ? convierte(r2.datos) : {ok:false, mensaje: sbMensaje(r2)};
+    });
+  });
+}
 function sbResetClave(id){
   if(SB.estado !== 'conectado') return Promise.resolve({ok:true, local:true});
-  return sbFuncion('/' + id + '/password', 'POST', {}).then(function(r){
-    if(!r.ok) return {ok:false, mensaje: sbMensaje(r)};
-    return {ok:true, password: r.datos.passwordInicial};
-  });
+  var nueva = claveFuerte();
+  return sbRpcOFuncion('restablece_clave', {p_id:id, p_password:nueva}, '/' + id + '/password', 'POST',
+    function(d){ return {ok:true, password: d ? d.passwordInicial : nueva}; });
 }
 
 function sbBorraUsuario(id){
   if(SB.estado !== 'conectado') return Promise.resolve({ok:true, local:true});
-  return sbFuncion('/' + id, 'DELETE').then(function(r){
-    return r.ok ? {ok:true} : {ok:false, mensaje: sbMensaje(r)};
-  });
+  return sbRpcOFuncion('borra_usuario', {p_id:id}, '/' + id, 'DELETE', function(){ return {ok:true}; });
 }
 
 function sbRecarga(){
