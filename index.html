@@ -7915,9 +7915,18 @@ function eventosUsuarios(v){
       renderApp();
     }); }; });
 
-  qa('[data-u-clave]').forEach(function(b){ b.onclick = function(){
+  qa('[data-u-clave]').forEach(function(b){ b.onclick = function(e){
+    if(e) e.stopPropagation();
     var u = usuarioPorId(b.dataset.uClave);
-    sbResetClave(u.id).then(function(r){
+    /* Se propone una contraseña segura; se puede dejar o escribir otra. */
+    var elegida = window.prompt('Nueva contraseña para '+u.n+'.\n\n'+
+      'Déjala como está o escribe la que quieras (mínimo 10 caracteres, con mayúscula, minúscula, número y símbolo).',
+      claveFuerte());
+    if(elegida === null) return;
+    elegida = String(elegida).trim();
+    var fal = revisaClave(elegida);
+    if(fal.length){ toast('La contraseña necesita '+fal.join(', ')+'.'); return; }
+    sbResetClave(u.id, elegida).then(function(r){
       if(!r.ok){ toast(r.mensaje); return; }
       u.pass = r.password || claveFuerte(); u.cambiar = true; u.ses = [];
       auditar(u, 'Contraseña restablecida', 'Deberá cambiarla en el próximo acceso. Sesiones cerradas.');
@@ -9112,23 +9121,23 @@ function sbAltaUsuario(datos){
 /* Contraseña y borrado van primero por la base de datos
    (17-jefe-gestiona-equipo.sql) y, si esas funciones no están instaladas,
    por la Edge Function, como antes. */
-function sbRpcOFuncion(rpc, args, ruta, metodo, convierte){
+function sbRpcOFuncion(rpc, args, ruta, metodo, convierte, cuerpo){
   return sbConSesion(function(){
     return sbFetch('/rest/v1/rpc/' + rpc, {method:'POST', body: args});
   }).then(function(r){
     if(r.ok) return convierte(null);
     var d = r.datos || {};
     if(!(r.estado === 404 || d.code === 'PGRST202' || d.code === '42883')) return {ok:false, mensaje: sbMensaje(r)};
-    return sbFuncion(ruta, metodo, metodo === 'DELETE' ? undefined : {}).then(function(r2){
+    return sbFuncion(ruta, metodo, metodo === 'DELETE' ? undefined : (cuerpo || {})).then(function(r2){
       return r2.ok ? convierte(r2.datos) : {ok:false, mensaje: sbMensaje(r2)};
     });
   });
 }
-function sbResetClave(id){
-  if(SB.estado !== 'conectado') return Promise.resolve({ok:true, local:true});
-  var nueva = claveFuerte();
+function sbResetClave(id, elegida){
+  var nueva = elegida || claveFuerte();
+  if(SB.estado !== 'conectado') return Promise.resolve({ok:true, local:true, password:nueva});
   return sbRpcOFuncion('restablece_clave', {p_id:id, p_password:nueva}, '/' + id + '/password', 'POST',
-    function(d){ return {ok:true, password: d ? d.passwordInicial : nueva}; });
+    function(d){ return {ok:true, password: d ? d.passwordInicial : nueva}; }, {password:nueva});
 }
 
 function sbBorraUsuario(id){
