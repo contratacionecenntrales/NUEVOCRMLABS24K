@@ -7505,7 +7505,7 @@ function rolesEditables(u){
    avanzada («Resumen y seguimiento»: objetivos, plan, tareas y notas). */
 function usuAbre(id){
   var u = usuarioPorId(id); if(!u) return;
-  USU.det = id; USU.verTok = false; USU.draft = null;
+  USU.det = id; USU.verTok = false; USU.draft = null; UHIST.id = null; UHIST.vista = 'todo';
   USU.tab = u.rol === 'commercial' ? 'ag' : 'info';
   if(u.rol === 'commercial'){
     AG.det = id; AG.enEquipo = false; AG.tab = 'ficha'; AG.borrador = null;
@@ -8023,6 +8023,7 @@ var TABS_U = [
   {k:'disp',   n:'Disponibilidad',        i:'clock'},
   {k:'cal',    n:'Calendario',            i:'calendar'},
   {k:'notif',  n:'Notificaciones',        i:'bell'},
+  {k:'hist',   n:'Historial de cambios',  i:'clock'},
   {k:'seg',    n:'Seguridad avanzada',    i:'cog'}
 ];
 var DIAS_U = [['L','Lunes'],['M','Martes'],['X','Miércoles'],['J','Jueves'],
@@ -8063,6 +8064,7 @@ function detalleHTML(){
     'se edita con normalidad.</span></div>' : '';
 
   var cuerpo = USU.tab==='ag'    ? fichaResumenAgente(real) :
+               USU.tab==='hist'  ? fichaHistorial(real) :
                USU.tab==='perm'  ? fichaPermisos(u)   :
                USU.tab==='llam'  ? fichaLlamadas(u)   :
                USU.tab==='disp'  ? fichaDisponibilidad(u) :
@@ -8121,6 +8123,56 @@ function fichaResumenAgente(u){
     '<div class="row" style="gap:6px;margin-bottom:14px;flex-wrap:wrap">'+sub+'</div>'+
     agCuerpo(u, true)+
     (pie ? '<div class="row" style="justify-content:flex-end;gap:10px;margin-top:14px">'+pie+'</div>' : '');
+}
+
+/* ----------------------- HISTORIAL DE CAMBIOS ---------------------------
+   Todo lo que la bitácora tiene de esta persona: lo que le han cambiado a su
+   cuenta (destino) y lo que ha hecho ella (autor). La bitácora no se puede
+   modificar, así que es el registro fiable. */
+var UHIST = {id:null, lista:[], cargando:false, error:'', vista:'todo'};
+function uhistCarga(u){
+  UHIST.id = u.id; UHIST.lista = []; UHIST.error = '';
+  if(SB.estado !== 'conectado'){
+    UHIST.lista = AUDIT.filter(function(a){ return a.aId === u.id || a.quien === u.n; })
+      .map(function(a){ return {ts:a.ts, quien:a.quien, a:a.a, accion:a.accion, det:a.det,
+                                comoDestino: a.aId === u.id, comoAutor: a.quien === u.n}; });
+    return;
+  }
+  UHIST.cargando = true;
+  sbSelect('bitacora', 'or=(destino_id.eq.'+u.id+',actor_id.eq.'+u.id+')&select=*&order=ts.desc&limit=300')
+  .then(function(r){
+    UHIST.cargando = false;
+    if(r && r.ok) UHIST.lista = (r.datos || []).map(function(a){
+      return {ts:new Date(a.ts).getTime(), quien:a.actor_nombre || 'sistema', a:a.destino_nombre || '—',
+              accion:a.accion, det:a.detalle || '', comoDestino: a.destino_id === u.id, comoAutor: a.actor_id === u.id}; });
+    else UHIST.error = sbMensaje(r);
+    if(USU.det === u.id && USU.tab === 'hist') renderApp();
+  });
+}
+function fichaHistorial(u){
+  if(UHIST.id !== u.id) uhistCarga(u);
+  var v = UHIST.vista;
+  var lista = UHIST.lista.filter(function(e){
+    return v === 'todo' || (v === 'cuenta' ? e.comoDestino : e.comoAutor); });
+  var nCuenta = UHIST.lista.filter(function(e){ return e.comoDestino; }).length;
+  var nHecho  = UHIST.lista.filter(function(e){ return e.comoAutor; }).length;
+  var botones = [['todo','Todo',UHIST.lista.length],['cuenta','Cambios en su cuenta',nCuenta],['hecho','Lo que ha hecho',nHecho]]
+    .map(function(b){ return '<button class="btn btn-s btn-xs" data-uhist="'+b[0]+'"'+
+      (v===b[0]?' style="border-color:var(--blue);color:#99F6E4"':'')+'>'+b[1]+' · '+b[2]+'</button>'; }).join('');
+  var filas = lista.map(function(e){
+    return '<tr><td class="tiny nowrap">'+esc(fechaHora(e.ts))+'</td>'+
+      '<td class="small">'+esc(e.accion)+(e.det ? '<div class="tiny muted">'+esc(e.det)+'</div>' : '')+'</td>'+
+      '<td class="tiny">'+(e.comoAutor && !e.comoDestino ? 'Sobre <strong>'+esc(e.a)+'</strong>'
+                                                       : 'Por <strong>'+esc(e.quien)+'</strong>')+'</td></tr>';
+  }).join('') || '<tr><td colspan="3" class="muted" style="text-align:center;padding:22px">'+
+    (UHIST.cargando ? 'Cargando historial...' : UHIST.error ? esc(UHIST.error) : 'No hay movimientos registrados.')+'</td></tr>';
+  return '<h4 class="ft-t">Historial de cambios</h4>'+
+    '<p class="tiny muted" style="margin:0 0 12px">Sale de la bitácora de auditoría: quién cambió qué en esta cuenta, '+
+      'y lo que ha hecho esta persona en el CRM. No se puede modificar.</p>'+
+    '<div class="row" style="gap:6px;margin-bottom:12px;flex-wrap:wrap">'+botones+
+      '<button class="btn btn-s btn-xs" id="uhist-recarga" style="margin-left:auto">'+ic('refresh',12)+' Actualizar</button></div>'+
+    '<div style="overflow:auto;max-height:52vh"><table class="tbl"><thead><tr>'+
+      '<th>Fecha</th><th>Qué</th><th>Quién / sobre quién</th></tr></thead><tbody>'+filas+'</tbody></table></div>';
 }
 
 /* ------------------------- 1 · INFORMACIÓN ------------------------------ */
@@ -8410,6 +8462,8 @@ function detalleEventos(){
   qa('[data-ftab]').forEach(function(b){ b.onclick = function(){
     leeFicha(); agLeeBorrador(); USU.tab = b.dataset.ftab; renderApp(); }; });
   if(USU.tab === 'ag') agEventos(USU.det);
+  qa('[data-uhist]').forEach(function(b){ b.onclick = function(){ UHIST.vista = b.dataset.uhist; renderApp(); }; });
+  if(q('#uhist-recarga')) q('#uhist-recarga').onclick = function(){ UHIST.id = null; renderApp(); };
   q('#ft-x').onclick = function(){ USU.det = null; USU.draft = null; renderApp(); };
   q('#ft-cancel').onclick = function(){ USU.det = null; USU.draft = null;
     toast('Cambios descartados.'); renderApp(); };
