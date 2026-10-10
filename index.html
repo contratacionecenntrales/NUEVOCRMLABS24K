@@ -9061,11 +9061,27 @@ function sbGuardaUsuario(u){
   });
 }
 
+/* El alta va primero por la función de base de datos alta_usuario()
+   (16-alta-por-sql.sql), que crea la identidad y la ficha a la vez y
+   comprueba quién puede dar de alta qué. Si esa función no está instalada,
+   se usa la Edge Function admin-usuarios, como antes. */
 function sbAltaUsuario(datos){
   if(SB.estado !== 'conectado') return Promise.resolve({ok:true, local:true});
-  return sbFuncion('', 'POST', datos).then(function(r){
-    if(!r.ok) return {ok:false, mensaje: sbMensaje(r)};
-    return {ok:true, usuario: r.datos.usuario, password: r.datos.passwordInicial};
+  return sbConSesion(function(){
+    return sbFetch('/rest/v1/rpc/alta_usuario', {method:'POST', body:{
+      p_nombre: datos.nombre, p_apellidos: datos.apellidos || '', p_email: datos.email,
+      p_rol: datos.rol, p_password: datos.password, p_prefijo: datos.prefijo || '+34',
+      p_telefono: datos.telefono || '', p_extension: datos.extension || '',
+      p_google: !!datos.google, p_superior: datos.superior_id || null}});
+  }).then(function(r){
+    if(r.ok) return {ok:true, usuario: r.datos, password: datos.password};
+    var d = r.datos || {};
+    var noInstalada = r.estado === 404 || d.code === 'PGRST202' || d.code === '42883';
+    if(!noInstalada) return {ok:false, mensaje: sbMensaje(r)};
+    return sbFuncion('', 'POST', datos).then(function(r2){
+      if(!r2.ok) return {ok:false, mensaje: sbMensaje(r2)};
+      return {ok:true, usuario: r2.datos.usuario, password: r2.datos.passwordInicial};
+    });
   });
 }
 

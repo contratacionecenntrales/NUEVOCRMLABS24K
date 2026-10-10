@@ -67,6 +67,7 @@ Proyecto: `ezwhkpfqnzyfulivlows`. En el editor SQL, **en este orden**:
 | `13-fichas-agente.sql` | Fichas de agente: área privada de cada agente, gestionada por el Jefe de Equipo y visible por el propio agente en «Mi Ficha» |
 | `14-superiores.sql` | Jerarquía de superiores para fichas de agente y «Ver como» (requiere volver a desplegar `admin-usuarios`) |
 | `15-empresa-cif.sql` | Empresa y CIF de cada usuario, editables en Usuarios y Accesos |
+| `16-alta-por-sql.sql` | Alta de usuarios sin depender de la Edge Function |
 
 Después:
 
