@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnostico Labs24k</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0B0F19;color:#E5E7EB;
+  margin:0;padding:28px;line-height:1.6}
+.c{max-width:640px;margin:0 auto;background:#1E293B;border:1px solid #1F2937;border-radius:16px;padding:24px}
+h1{font-size:20px;margin:0 0 4px;color:#3B82F6}
+p{font-size:14px;color:#94A3B8}
+.f{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #1F2937;font-size:14px}
+.ok{color:#6EE7B7;font-weight:600}.ko{color:#FCA5A5;font-weight:600}
+code{background:#0F172A;padding:2px 6px;border-radius:5px;font-size:12.5px}
+</style></head><body><div class="c">
+<h1>Diagnostico del servidor</h1>
+<p>Si ves esta pagina, el alojamiento sirve HTML correctamente y el problema
+esta en el <code>.htaccess</code> o en el propio <code>index.html</code>.</p>
+<div class="f"><span>Servidor entrega HTML</span><span class="ok">correcto</span></div>
+<div class="f"><span>JavaScript activo</span><span id="js" class="ko">bloqueado</span></div>
+<div class="f"><span>Protocolo</span><span id="proto">-</span></div>
+<div class="f"><span>Ruta actual</span><span id="ruta">-</span></div>
+<div class="f"><span>Almacenamiento local</span><span id="ls">-</span></div>
+<p style="margin-top:18px">Sube este archivo como <code>test.html</code> junto al
+<code>index.html</code> y abrelo en el navegador.</p>
+</div>
+<script>
+document.getElementById('js').textContent='correcto';
+document.getElementById('js').className='ok';
+document.getElementById('proto').textContent=location.protocol;
+document.getElementById('ruta').textContent=location.pathname;
+try{localStorage.setItem('t','1');localStorage.removeItem('t');
+  document.getElementById('ls').textContent='disponible';
+  document.getElementById('ls').className='ok';}
+catch(e){document.getElementById('ls').textContent='bloqueado';
+  document.getElementById('ls').className='ko';}
+</script></body></html>

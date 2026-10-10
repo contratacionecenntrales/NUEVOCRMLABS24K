@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin">
+<meta name="theme-color" content="#F1F5F9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='6' y1='6' x2='58' y2='58' gradientUnits='userSpaceOnUse'><stop stop-color='%232DD4C4'/><stop offset='.55' stop-color='%2317C8C0'/><stop offset='1' stop-color='%231A7F9C'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='%230B0F19'/><g stroke='url(%23g)' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round' fill='none'><path d='M12 20 L32 9 L44 16'/><path d='M52 24 V42 L43 47'/><path d='M32 55 L12 43 V26'/><path d='M20 41 h9 l4 4'/><path d='M39 20 V40'/></g><g fill='url(%23g)'><circle cx='20' cy='41' r='4.6'/><circle cx='39' cy='42' r='5'/><rect x='45' y='11' width='8' height='8' rx='2'/><rect x='55' y='21' width='5' height='5' rx='1.4' opacity='.75'/></g></svg>">
+<title>Firmar contrato | Labs24k</title>
+<style>
+/* ==========================================================================
+   MODULO DE PRESUPUESTOS: catalogo, documento formal y hoja de ruta
+   ========================================================================== */
+.pack-list{padding-right:2px}
+.pack{background:var(--card-2);border:1px solid var(--line);border-radius:14px;padding:13px;
+  margin-bottom:9px;cursor:pointer;transition:.15s}
+.pack:hover{border-color:#31435E}
+.pack.on{border-color:var(--blue);background:rgba(8,145,178,.22);box-shadow:0 8px 22px -14px rgba(23,200,192,.9)}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:.94em;letter-spacing:.01em}
+.btn.on-tab{background:var(--blue);color:#fff;border-color:var(--blue)}
+.rec{color:#86EFAC}
+
+/* ---------- DOCUMENTO ---------- */
+/* HOJA EN BLANCO
+   El documento es papel, no interfaz: se ve igual en pantalla que impreso.
+   En lugar de repintar cada elemento, se redefinen los colores del sistema
+   solo dentro del documento, así todo lo que hay dentro —tablas, chips,
+   isotipo, gráficos— cambia de una vez y no queda nada heredado del modo
+   oscuro. */
+.doc.pdf{
+  --bg:#FFFFFF; --panel:#FFFFFF; --card:#FFFFFF; --card-2:#F8FAFC;
+  --line:#E2E8F0; --line-soft:#E7EDF4;
+  --txt:#0F172A; --txt-2:#475569; --txt-3:#64748B;
+  --blue:#0F766E; --blue-d:#115E59; --cyan:#0E9C96;
+  --green:#047857; --amber:#B45309; --red:#B91C1C; --violet:#5B21B6;
+  --iso-1:#12B7B0; --iso-2:#1A7F9C; --iso-3:#16324F;
+  --shadow:0 10px 34px -20px rgba(15,23,42,.45);
+  background:#FFFFFF;
+  color:#0F172A;
+  border:1px solid #E2E8F0;
+  border-radius:var(--r);
+  padding:34px;
+  box-shadow:var(--shadow);
+}
+.doc.pdf .muted{color:#64748B}
+.doc.pdf .w,.doc.pdf strong,.doc.pdf h1,.doc.pdf h2,.doc.pdf h3,.doc.pdf h4{color:#0F172A}
+.doc.pdf .tbl th{color:#475569;background:#F8FAFC}
+.doc.pdf .tbl td{border-color:#E2E8F0}
+.doc.pdf .chip{border-color:#CBD5E1}
+.doc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  padding-bottom:16px;border-bottom:2px solid var(--blue)}
+.doc-brand{font-size:20px;font-weight:800;letter-spacing:.14em;color:var(--blue)}
+.doc-brand span{color:var(--txt)}
+.doc-kicker{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--blue)}
+.doc-title{font-size:22px;line-height:1.25;font-weight:700;color:var(--txt);margin:22px 0 6px;
+  text-wrap:balance;max-width:62ch}
+.doc-lead{font-size:13px;color:var(--txt-2);max-width:72ch;margin:0 0 18px}
+.doc-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:14px 0;margin:16px 0;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.doc-meta .k,.doc-parties .k,.doc-sign .k{display:block;font-size:10px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--txt-3);margin-bottom:4px}
+.doc-meta .v{font-size:13px;font-weight:600;color:var(--txt)}
+.doc-parties{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:var(--card-2);
+  border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:20px}
+.doc-parties .v.big{font-size:15px;font-weight:700;color:var(--txt)}
+.doc-parties .tel{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+  color:var(--blue);margin:3px 0 2px}
+.doc-hero{text-align:center;border:1px solid rgba(23,200,192,.4);border-radius:14px;padding:20px;
+  margin:6px 0 24px;background:linear-gradient(180deg,rgba(23,200,192,.14),rgba(23,200,192,0))}
+.doc-hero .amount{font-size:36px;font-weight:800;color:var(--txt);letter-spacing:-.02em;margin:6px 0 4px;
+  font-variant-numeric:tabular-nums}
+.doc-sec{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--txt-2);margin:26px 0 12px}
+.doc-sec .n{width:22px;height:22px;border-radius:6px;background:var(--blue);color:#fff;display:flex;
+  align-items:center;justify-content:center;font-size:12px;letter-spacing:0}
+.doc-tbl td{vertical-align:top}
+.doc-tbl td,.doc-tbl th{font-variant-numeric:tabular-nums}
+.doc-sum{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:18px}
+.doc-sum .l{display:flex;justify-content:space-between;gap:16px;padding:11px 16px;font-size:13px;
+  border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.doc-sum .l:last-child{border-bottom:none}
+.doc-sum .l.tot{background:var(--card-2);font-size:16px;font-weight:800;color:var(--txt);
+  border-top:2px solid var(--blue)}
+.doc-box{background:var(--card-2);border:1px solid var(--line);border-left:3px solid var(--blue);
+  border-radius:10px;padding:15px;margin-bottom:16px}
+.doc-box .bt{font-size:12.5px;font-weight:700;color:var(--txt);margin-bottom:8px}
+.doc-box .li{font-size:12.5px;color:var(--txt-2);margin-bottom:5px}
+.doc-note{font-size:11.5px;color:var(--txt-3);line-height:1.6;padding:12px 0;border-top:1px dashed var(--line)}
+.doc-why{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.doc-why>div{text-align:center;padding:14px;border:1px solid var(--line);border-radius:12px}
+.doc-why .ok{color:var(--green);display:flex;justify-content:center;margin-bottom:8px}
+.doc-why .t{font-size:12.5px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.doc-sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin:28px 0 10px}
+.doc-sign .line{height:34px;border-bottom:1px solid var(--txt-3);margin:6px 0 8px}
+.doc-sign .v{font-size:13px;font-weight:600;color:var(--txt)}
+.doc-foot{font-size:10.5px;color:var(--txt-3);text-align:center;padding-top:14px;
+  border-top:1px solid var(--line);margin-top:16px;line-height:1.6}
+
+/* ---------- HOJA DE RUTA ---------- */
+.week{background:var(--card-2);border:1px solid var(--line);border-radius:14px;padding:16px}
+.week .wh{display:flex;align-items:center;gap:11px;margin-bottom:10px}
+.week .wn{width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:var(--blue);color:#fff;
+  font-weight:800;display:flex;align-items:center;justify-content:center}
+.week .wt{font-size:14px;font-weight:700;color:var(--txt)}
+.week .wl{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--txt-2);margin:8px 0}
+.week .wl svg{flex:0 0 auto;color:var(--green);margin-top:2px}
+.week .wr{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-size:12px;
+  font-weight:600;color:var(--blue)}
+
+@media(max-width:1000px){
+  .doc-meta,.doc-why{grid-template-columns:repeat(2,1fr)}
+  .doc-parties,.doc-sign{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .doc.pdf{padding:18px}
+  .doc-meta,.doc-why{grid-template-columns:1fr}
+  .doc-hero .amount{font-size:27px}
+  .doc-title{font-size:18px}
+}
+
+/* ==========================================================================
+   IMPRESION / EXPORTACION A PDF: solo el documento, sobre papel blanco
+   ========================================================================== */
+@media print{
+  @page{size:A4;margin:12mm}
+  :root{
+    --bg:#fff; --panel:#fff; --card:#fff; --card-2:#F8FAFC; --line:#D9E0EA;
+    --line-soft:#E5EAF1; --txt:#0B0F19; --txt-2:#475569; --txt-3:#64748B;
+  }
+  html,body{background:#fff!important;color:#0B0F19!important}
+  .app{display:block}
+  .main,.content,.view{display:block;padding:0!important;margin:0!important;max-width:none}
+  .stack,.grid{display:block!important}
+  /* se declara despues para ganar a las reglas de display anteriores */
+  .sidebar,.topbar,.toast,.scrim,.no-print,.no-print *{display:none!important}
+  .doc.pdf{border:none!important;border-radius:0;padding:0!important;background:#fff!important;
+    box-shadow:none;break-inside:auto}
+  .doc-hero{background:#ECFEFF!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .doc-sec .n,.week .wn{background:#17C8C0!important;color:#fff!important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .doc-top{border-bottom-color:#17C8C0!important}
+  .doc-sum .l.tot{background:#F1F5F9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tbl th{background:#F1F5F9!important;color:#31435E!important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .chip{border-color:#CBD5E1!important;background:#F8FAFC!important;color:#31435E!important}
+  .doc-sec,.doc-sign,.doc-why,.doc-box,.week,tr{break-inside:avoid}
+  .doc-sec{break-after:avoid}
+  .doc-why{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:10px}
+  .doc-sign,.doc-parties{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .doc-meta{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:10px 24px}
+  /* compactado para que la propuesta entre en el minimo de paginas */
+  body{font-size:12px}
+  .doc-title{font-size:19px;margin:16px 0 4px}
+  .doc-hero{padding:14px;margin:4px 0 16px}
+  .doc-hero .amount{font-size:30px}
+  .doc-sec{margin:18px 0 9px}
+  .tbl td{padding:9px 10px}
+  .tbl th{padding:8px 10px}
+  .doc-sum .l{padding:8px 12px}
+  .doc-sign{margin:20px 0 8px}
+  /* texto blanco del tema oscuro: en papel debe ser tinta */
+  .doc .w,.doc-tbl .w,.tbl .w{color:#0B0F19!important}
+  .rec{color:#047857!important}
+  a{color:#0F766E!important;text-decoration:none}
+}
+
+/* Cabecera de marca de los documentos: isotipo y logotipo alineados por su
+   eje óptico, con el mismo aire arriba y abajo. */
+.doc-brand-row{display:flex;align-items:center;gap:15px}
+.doc-brand-row .marca-txt{display:block;margin-bottom:3px}
+.doc-brand-row > div{display:flex;flex-direction:column;justify-content:center;min-width:0}
+
+/* Los controles que viven dentro de la hoja (quitar línea, etc.) también son
+   claros: en papel blanco un botón oscuro canta. */
+.doc.pdf .btn-s{background:#F1F5F9;color:#475569;border:1px solid #CBD5E1}
+.doc.pdf .btn-s:hover{background:#E2E8F0;color:#0F172A}
+.doc.pdf .rec{color:#047857}
+.doc.pdf .doc-parties{background:#F8FAFC;border:1px solid #E2E8F0}
+.doc.pdf .doc-hero{background:#F0FDFA;border-color:#99F6E4}
+.doc.pdf .doc-sec .n{background:#0F766E;color:#fff}
+.doc.pdf .tel{color:#0F766E}
+
+/* =========================================================================
+   RANKING · MISSION CONTROL · CONTROL POR VOZ · CONTRATOS
+   ====================================================================== */
+
+/* ---------------------------- PODIO ---------------------------------- */
+.card-podio{padding-bottom:0;overflow:hidden}
+.podio{display:flex;align-items:flex-end;justify-content:center;gap:16px;
+  margin-top:22px;flex-wrap:wrap}
+.pod{flex:1 1 180px;max-width:240px;text-align:center;padding:18px 14px 0;
+  border:1px solid var(--line);border-radius:14px 14px 0 0;background:var(--card-2);
+  position:relative;display:flex;flex-direction:column;align-items:center;gap:5px}
+.pod-1{border-color:rgba(23,200,192,.5);
+  background:linear-gradient(180deg,rgba(23,200,192,.12),var(--card-2) 70%)}
+.pod-2{border-color:rgba(148,163,184,.35)}
+.pod-3{border-color:rgba(180,83,9,.35)}
+.pod-medalla{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+  width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:800;color:#04231F;background:#94A3B8;
+  border:2px solid var(--panel)}
+.pod-1 .pod-medalla{background:var(--blue)}
+.pod-3 .pod-medalla{background:#B45309;color:#fff}
+.pod-av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-weight:700;font-size:18px;margin-top:6px}
+.pod-n{font-weight:600;color:#fff;font-size:13.5px;line-height:1.3}
+.pod-vol{font-size:20px;font-weight:800;color:var(--txt);letter-spacing:-.01em;margin-top:4px}
+.pod-barra{width:100%;margin-top:12px;border-radius:8px 8px 0 0;background:rgba(23,200,192,.16)}
+.pod-1 .pod-barra{height:56px;background:rgba(23,200,192,.3)}
+.pod-2 .pod-barra{height:38px}
+.pod-3 .pod-barra{height:26px}
+
+.rk-pos{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+  border-radius:8px;background:var(--card-2);border:1px solid var(--line);
+  font-size:12px;font-weight:700;color:var(--txt-2)}
+.rk-pos.top{background:rgba(23,200,192,.15);border-color:rgba(23,200,192,.4);color:#99F6E4}
+
+/* ------------------------ MISSION CONTROL ---------------------------- */
+.ag-rejilla{gap:14px}
+.ag{display:flex;flex-direction:column}
+.ag-off{opacity:.82;border-style:dashed}
+.ag-acciones{display:flex;flex-direction:column;gap:8px;padding-top:11px;
+  border-top:1px solid var(--line);min-height:52px}
+.ag-acc{display:flex;gap:9px;align-items:flex-start}
+.ag-punto{width:6px;height:6px;border-radius:50%;background:var(--blue);flex:0 0 auto;
+  margin-top:5px;box-shadow:0 0 0 3px rgba(23,200,192,.14)}
+
+/* ------------------------- CONTROL POR VOZ --------------------------- */
+.vz-card{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:34px 22px;text-align:center;min-height:340px}
+.vz-onda{display:flex;align-items:center;justify-content:center;gap:5px;height:56px}
+.vz-onda i{width:5px;height:12px;border-radius:3px;background:var(--line);display:block}
+.vz-onda.on i{background:var(--blue);animation:vzsalta 1s ease-in-out infinite}
+@keyframes vzsalta{0%,100%{height:10px}50%{height:44px}}
+.vz-boton{width:92px;height:92px;border-radius:50%;border:1px solid var(--line);
+  background:var(--card-2);color:var(--txt-2);cursor:pointer;display:flex;
+  align-items:center;justify-content:center;transition:transform .15s}
+.vz-boton:hover:not(:disabled){transform:scale(1.04);color:var(--blue);
+  border-color:rgba(23,200,192,.5)}
+.vz-boton:disabled{opacity:.45;cursor:not-allowed}
+.vz-boton.on{background:var(--blue);color:#04231F;border-color:var(--blue);
+  box-shadow:0 0 0 8px rgba(23,200,192,.14)}
+.vz-estado{font-size:13px;color:var(--txt-2)}
+.vz-ultimo{font-size:15px;color:#fff;font-style:italic;max-width:32ch}
+.vz-ordenes{display:flex;flex-wrap:wrap;gap:7px}
+.vz-h{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;
+  background:var(--card-2);border:1px solid var(--line)}
+.vz-h svg{flex:0 0 auto;margin-top:1px;color:var(--green)}
+.vz-h-no svg{color:var(--amber)}
+
+@media(prefers-reduced-motion:reduce){
+  .vz-onda.on i{animation:none;height:24px}
+  .vz-boton{transition:none}
+}
+
+/* ---------------------------- CONTRATO -------------------------------- */
+.doc.pdf.contrato .ct-p{font-size:13px;line-height:1.75;color:#334155;margin:0 0 14px;
+  text-align:justify}
+.doc.pdf .hueco{background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 6px;
+  font-style:italic;font-weight:600}
+
+/* Subtítulo del contrato (la línea larga bajo el título) */
+.doc.pdf .doc-sub{font-size:13.5px;line-height:1.55;color:#475569;font-weight:600;
+  margin:0 0 20px;max-width:70ch}
+
+/* Epígrafes sin número: REUNIDOS · EXPONEN · CLÁUSULAS · ANEXO I */
+.doc.pdf .ct-hito{justify-content:center;text-align:center;letter-spacing:.2em;
+  font-size:12.5px;color:#0F766E;border-top:1px solid #E2E8F0;border-bottom:1px solid #E2E8F0;
+  padding:9px 0;margin:26px 0 16px}
+
+/* Listas de las cláusulas segunda, tercera, sexta, séptima y novena */
+.doc.pdf .ct-ul{margin:0 0 14px;padding-left:20px;list-style:disc}
+.doc.pdf .ct-ul li{font-size:13px;line-height:1.7;color:#334155;margin-bottom:7px;
+  text-align:justify}
+.doc.pdf .ct-ul li::marker{color:#0F766E}
+
+/* Tabla orientativa de inversión publicitaria (cláusula cuarta) */
+.doc.pdf .ct-tabla{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:12.5px}
+.doc.pdf .ct-tabla th{text-align:left;font-weight:700;color:#0F172A;background:#F1F5F9;
+  border:1px solid #E2E8F0;padding:9px 11px}
+.doc.pdf .ct-tabla td{border:1px solid #E2E8F0;padding:9px 11px;color:#334155;
+  font-variant-numeric:tabular-nums}
+
+/* Cuadro resumen del precio (se usa aquí y en el formulario) */
+.sum-l{display:flex;justify-content:space-between;gap:16px;padding:11px 16px;font-size:13px;
+  border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.sum-l:last-child{border-bottom:none}
+.sum-l.tot{background:var(--card-2);font-size:16px;font-weight:800;color:var(--txt);
+  border-top:2px solid var(--blue)}
+
+/* Anexo I: empieza en página nueva al imprimir */
+.doc.pdf .ct-anexo{margin-top:34px;padding-top:8px}
+
+/* Enlace de firma copiable */
+.copiable{background:var(--card-2);border:1px solid var(--line);border-radius:10px;
+  padding:11px 13px;overflow-wrap:anywhere}
+.copiable code{font-size:12.5px;color:var(--blue);font-family:ui-monospace,SFMono-Regular,
+  Menlo,Consolas,monospace}
+
+@media print{
+  .doc.pdf .ct-anexo{break-before:page}
+  .doc.pdf .ct-ul li,.doc.pdf .ct-tabla tr,.doc.pdf .ct-p{break-inside:avoid}
+}
+.doc-sign{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:32px}
+.doc.pdf .firma{height:56px;border-bottom:1px solid #94A3B8;margin:10px 0 7px}
+.doc.pdf .doc-sign .k{color:#64748B}
+
+@media(max-width:700px){
+  .doc-sign{grid-template-columns:1fr}
+  .pod{max-width:none}
+}
+
+/* =========================================================================
+   PÁGINA DE FIRMA DEL CLIENTE  ·  firmar.html
+   Fondo claro y sobrio: quien la abre es un cliente que va a firmar un
+   contrato, no un comercial usando el panel. Nada de modo oscuro aquí.
+   ====================================================================== */
+html,body{background:#F1F5F9}
+body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  color:#0F172A;margin:0;padding:0;line-height:1.6;-webkit-text-size-adjust:100%}
+*{box-sizing:border-box}
+
+.fx-wrap{max-width:820px;margin:0 auto;padding:18px 14px 60px;display:flex;
+  flex-direction:column;gap:16px}
+
+/* ------------------------------ cabecera ------------------------------- */
+.fx-cab{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:14px;padding:18px}
+.fx-marca{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.fx-mini{font-size:11.5px;color:#64748B;line-height:1.55}
+.fx-nota{font-size:13.5px;color:#475569;border-top:1px solid #E2E8F0;padding-top:12px}
+.fx-nota strong{color:#0F172A}
+
+/* --------------------------- cajas de estado --------------------------- */
+.fx-caja{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:14px;padding:26px 22px;
+  text-align:center}
+.fx-caja h2{font-size:19px;margin:0 0 8px;color:#0F172A}
+.fx-caja p{font-size:14px;color:#475569;margin:0;max-width:52ch;margin-inline:auto}
+.fx-caja.ok{border-color:#A7F3D0;background:linear-gradient(180deg,#ECFDF5,#FFFFFF 65%)}
+.fx-caja.ok h2{color:#047857}
+.fx-caja.espera h2{color:#475569;font-weight:600}
+.fx-caja .fx-boton{max-width:280px;margin:18px auto 0}
+
+/* --------------------------- panel de firma ---------------------------- */
+.fx-panel{background:#FFFFFF;border:1px solid #E2E8F0;border-radius:14px;padding:22px}
+.fx-panel h2{font-size:17px;margin:0 0 16px;color:#0F172A}
+.fx-campos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.fx-panel label{display:block;font-size:12.5px;font-weight:600;color:#334155}
+.fx-panel input[type=text]{display:block;width:100%;margin-top:6px;padding:11px 12px;
+  font-size:15px;font-family:inherit;color:#0F172A;background:#F8FAFC;
+  border:1px solid #CBD5E1;border-radius:10px}
+.fx-panel input[type=text]:focus{outline:2px solid #0F766E;outline-offset:1px;
+  border-color:#0F766E;background:#FFFFFF}
+
+.fx-lienzo-cab{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:12.5px;font-weight:600;color:#334155;margin-bottom:6px}
+.fx-link{background:none;border:none;padding:0;font:inherit;font-size:12.5px;
+  font-weight:600;color:#0F766E;cursor:pointer;text-decoration:underline}
+.fx-lienzo{width:100%;height:150px;display:block;background:#F8FAFC;
+  border:1px dashed #94A3B8;border-radius:10px;touch-action:none;cursor:crosshair}
+
+.fx-check{display:flex!important;gap:11px;align-items:flex-start;margin:18px 0;
+  font-size:12.5px;font-weight:400!important;color:#475569;line-height:1.6}
+.fx-check input{width:20px;height:20px;flex:0 0 auto;margin-top:1px;accent-color:#0F766E}
+
+.fx-boton{display:block;width:100%;padding:15px;font:inherit;font-size:15.5px;
+  font-weight:700;color:#FFFFFF;background:#0F766E;border:none;border-radius:11px;
+  cursor:pointer;transition:background .15s}
+.fx-boton:hover:not(:disabled){background:#0B5D57}
+.fx-boton:disabled{background:#CBD5E1;color:#64748B;cursor:not-allowed}
+.fx-aviso{margin-top:12px;padding:11px 13px;border-radius:10px;font-size:13px;
+  background:#FEF2F2;border:1px solid #FECACA;color:#991B1B}
+
+/* Firma ya trazada dentro del documento */
+.doc.pdf .firma.trazada{border-bottom:1px solid #94A3B8;display:flex;align-items:flex-end;
+  justify-content:center;overflow:hidden}
+.doc.pdf .firma.trazada img{max-height:56px;max-width:100%;object-fit:contain}
+.ct-sello{margin-top:14px;padding:11px 13px;border-radius:8px;font-size:11.5px;
+  color:#0F766E;background:#F0FDFA;border:1px solid #99F6E4;line-height:1.6}
+
+@media(max-width:620px){
+  .fx-campos{grid-template-columns:1fr}
+  .fx-wrap{padding:12px 10px 48px}
+  .doc.pdf{padding:20px 16px}
+}
+
+@media print{
+  .fx-cab,.fx-panel,.fx-caja{display:none!important}
+  .fx-wrap{padding:0;max-width:none}
+  body{background:#FFFFFF}
+  .doc.pdf{border:none!important;padding:0!important}
+}
+</style>
+</head>
+<body>
+<noscript><div style="padding:40px;text-align:center;color:#475569">
+Para firmar el contrato hace falta JavaScript activado en el navegador.</div></noscript>
+<div id="app"></div>
+<script>
+/* ==========================================================================
+   LABS COMMAND CENTER 360 - Nucleo de la aplicación
+   Labs24k · SPA sin dependencias (vanilla JS). Datos de demostración.
+   ========================================================================== */
+
+/* ------------------------------ ICONOS ---------------------------------- */
+var ICON = {
+  dashboard:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  calendar:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  calc:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15v4M8 19h4"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  chat:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.2A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/>',
+  filter:'<path d="M22 3H2l8 9.5V19l4 2v-8.5z"/>',
+  case:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+  plug:'<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v4"/>',
+  cog:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+  play:'<circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z"/>',
+  check:'<circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  euro:'<path d="M14 21a8 8 0 1 1 0-16"/><path d="M4 11h10M4 15h9"/>',
+  trend:'<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+  bell:'<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/>',
+  mic:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 9l5-5 5 5M12 4v12"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/>',
+  send:'<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>',
+  refresh:'<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  spark:'<path d="M12 2l2.2 6.4L21 10l-5.5 4.1L17 21l-5-3.6L7 21l1.5-6.9L3 10l6.8-1.6z"/>',
+  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  building:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01M10 21v-4h4v4"/>',
+  alert:'<path d="M12 2l10 18H2z"/><path d="M12 9v5M12 17h.01"/>',
+  arrowUp:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+  arrowDown:'<path d="M12 5v14M19 12l-7 7-7-7"/>',
+  menu:'<path d="M3 6h18M3 12h18M3 18h18"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  userPlus:'<path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  arrowLeft:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  arrowRight:'<path d="M5 12h14M12 5l7 7-7 7"/>',
+  help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17h.01"/>',
+  shield:'<path d="M12 2l8 4v6c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V6z"/>',
+  link:'<path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'
+};
+function ic(n, s){ s = s || 18;
+  return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(ICON[n]||'')+'</svg>'; }
+
+
+/* ==========================================================================
+   MARCA LABS24K · redibujada en SVG desde el logotipo oficial
+   Fuentes: labs24k_logotipo.pdf (degradado exacto) y el logotipo completo
+   con isotipo, tipografía y lema.
+
+   Degradado de marca:  #12B7B0 -> #1A7F9C (55%) -> #16324F
+   Sobre el fondo oscuro del panel, el tramo marino desaparece (1,46:1 de
+   contraste), así que hay DOS versiones del mismo degradado, como en cualquier
+   manual de marca: la original para fondo claro —documentos, propuestas,
+   impresión— y una aclarada para fondo oscuro, que conserva los tonos pero
+   sube el brillo del tramo final.
+
+   logo(tam, claro)        isotipo suelto
+   marcaTexto(alto, claro) logotipo tipográfico «Labs24K»
+   logotipo(alto, opc)     bloque completo: isotipo + texto (+ lema)
+   ========================================================================== */
+var MARCA = {
+  claro: [['0','#12B7B0'], ['.55','#1A7F9C'], ['1','#16324F']],   // original
+  oscuro:[['0','#2DD4C4'], ['.55','#17C8C0'], ['1','#1A7F9C']],   // fondo oscuro
+  lema: 'Donde la tecnología y el éxito se encuentran'
+};
+var _logoN = 0;
+/* Las paradas del degradado salen de variables CSS cuando la marca va sobre el
+   panel. Así, al imprimir, la hoja de estilos redefine esas variables con los
+   colores originales del logotipo y el documento sale con la marca exacta,
+   sin duplicar el SVG ni tener que decidirlo en el JavaScript. */
+function _grad(id, claro, x1, y1, x2, y2){
+  var paradas = claro
+    ? MARCA.claro.map(function(p){
+        return '<stop offset="'+p[0]+'" stop-color="'+p[1]+'"/>'; }).join('')
+    : MARCA.oscuro.map(function(p, i){
+        return '<stop offset="'+p[0]+'" stop-color="var(--iso-'+(i+1)+','+p[1]+')"/>'; }).join('');
+  return '<linearGradient id="'+id+'" x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+
+         '" gradientUnits="userSpaceOnUse">'+paradas+'</linearGradient>';
+}
+
+/* ------------------------------- ISOTIPO -------------------------------- */
+/* El contorno NO está redibujado a mano: es el trazado vectorial del isotipo
+   original, obtenido del logotipo que nos habéis pasado. Por eso conserva
+   exactamente sus proporciones, los cortes del hexágono, los nodos y los
+   bloques de datos. Lo único que cambia es el relleno, que se aplica como un
+   degradado sobre toda la figura, igual que en el original.
+
+   Las dos transformaciones encajan el trazado en el lienzo de 64x64:
+   la interna es el sistema de coordenadas del trazador (eje Y invertido) y la
+   externa centra la marca dejando 2 unidades de aire por lado. */
+var ISO_D = 'M7760 12037 c-14 -7 -61 -34 -105 -60 -83 -50 -99 -59 -227 -136 -118 -70 -168 -98 -225 -125 -28 -14 -54 -30 -58 -36 -3 -6 -32 -24 -63 -41 -63 -33 -98 -54 -187 -110 -33 -21 -73 -43 -89 -49 -16 -6 -37 -21 -48 -35 -10 -13 -34 -27 -53 -31 -20 -3 -52 -18 -73 -33 -20 -15 -98 -60 -172 -100 -74 -41 -144 -82 -155 -92 -11 -10 -38 -25 -59 -34 -21 -9 -50 -24 -65 -34 -14 -10 -71 -45 -126 -77 -55 -32 -113 -68 -128 -81 -15 -12 -45 -27 -66 -33 -22 -6 -46 -21 -55 -34 -8 -13 -30 -27 -48 -31 -18 -4 -46 -17 -63 -29 -31 -22 -155 -94 -262 -153 -148 -81 -217 -133 -254 -192 l-29 -45 0 -1044 c0 -1126 -1 -1101 50 -1117 29 -9 102 14 130 40 14 13 45 32 70 43 25 11 52 27 59 36 8 10 35 29 60 44 96 55 289 220 313 267 10 19 31 41 46 51 16 9 43 37 61 63 17 25 43 62 56 81 13 19 34 48 46 64 55 70 92 221 85 346 -8 154 7 349 34 425 11 33 25 89 30 124 11 77 96 184 167 211 34 13 103 52 263 148 19 12 65 37 101 56 36 19 71 41 78 50 7 8 27 18 44 22 18 3 45 18 61 31 17 14 53 36 80 49 28 13 67 34 86 45 19 12 67 40 105 62 39 22 79 49 90 59 12 9 36 23 55 29 19 6 64 31 100 54 112 73 254 154 282 160 15 4 34 18 43 31 38 58 223 5 342 -97 18 -16 50 -33 72 -39 21 -5 44 -17 51 -25 7 -8 42 -35 79 -58 160 -105 208 -135 241 -152 19 -10 45 -28 56 -41 12 -12 38 -26 58 -30 23 -4 43 -16 53 -30 8 -13 65 -57 127 -99 187 -125 230 -156 243 -174 7 -10 27 -24 45 -31 18 -7 49 -29 70 -49 49 -48 96 -85 136 -105 18 -9 40 -32 48 -49 9 -18 35 -45 60 -61 43 -27 123 -133 125 -165 0 -9 1 -824 3 -1811 1 -987 6 -1812 10 -1832 7 -33 5 -40 -20 -62 -106 -94 -219 -206 -237 -236 -11 -19 -33 -50 -49 -68 -15 -18 -28 -40 -28 -50 0 -10 -12 -34 -26 -55 -14 -21 -31 -66 -39 -100 -7 -34 -23 -98 -34 -141 -27 -101 -27 -204 -1 -287 10 -35 26 -96 34 -134 8 -39 26 -91 40 -115 14 -25 26 -53 26 -63 0 -10 16 -33 35 -53 19 -19 35 -39 35 -45 0 -19 132 -149 205 -203 101 -74 195 -116 350 -157 65 -18 372 -15 420 4 22 8 77 29 121 45 142 54 336 206 409 321 13 22 29 42 34 45 23 15 93 181 117 282 57 234 5 553 -113 697 -12 15 -30 43 -39 62 -9 19 -20 35 -25 35 -5 0 -22 18 -37 39 -16 22 -60 65 -98 96 -38 30 -75 66 -81 78 -10 17 -12 392 -13 1685 0 1917 -13 1702 110 1702 100 0 135 -17 144 -68 5 -36 14 -47 77 -94 103 -76 122 -88 144 -88 19 0 79 -35 135 -78 14 -10 41 -27 60 -37 19 -10 50 -31 69 -47 19 -17 54 -38 78 -49 24 -10 58 -29 76 -43 18 -13 48 -29 68 -35 20 -7 45 -21 55 -32 11 -12 35 -29 54 -39 49 -25 74 -55 104 -124 l26 -58 0 -400 0 -400 -31 -76 c-30 -74 -31 -81 -26 -195 6 -154 -24 -190 -103 -123 -17 14 -37 26 -43 26 -7 0 -36 16 -66 36 -30 20 -86 51 -126 69 -40 19 -76 38 -79 43 -3 6 -28 18 -54 28 -26 9 -58 27 -72 40 -14 12 -45 32 -69 44 -24 12 -88 51 -142 87 -103 68 -131 74 -145 31 -3 -12 -6 -250 -6 -529 1 -542 2 -558 50 -573 10 -4 28 -19 40 -35 12 -16 38 -35 59 -41 21 -7 46 -19 55 -27 10 -9 39 -26 65 -40 26 -13 66 -35 88 -48 22 -13 61 -36 87 -50 26 -14 97 -56 158 -94 60 -38 119 -72 130 -76 20 -6 79 -51 140 -105 19 -17 46 -40 60 -50 l25 -18 3 -927 3 -926 -31 -52 c-51 -88 -111 -142 -220 -199 -36 -19 -99 -54 -140 -77 -41 -24 -109 -61 -150 -83 -41 -21 -84 -48 -95 -58 -11 -11 -39 -26 -60 -33 -22 -8 -57 -25 -77 -38 -48 -32 -137 -81 -168 -94 -27 -11 -153 -84 -211 -122 -19 -12 -41 -23 -47 -23 -12 0 -97 -47 -257 -141 -45 -26 -99 -52 -120 -58 -22 -6 -49 -18 -59 -26 -46 -35 -202 8 -329 91 -45 30 -87 54 -93 54 -6 0 -19 9 -29 20 -9 10 -45 33 -79 49 -60 30 -130 71 -251 147 -33 21 -88 50 -122 65 -67 29 -128 65 -201 118 -25 19 -66 43 -91 54 -26 11 -60 30 -77 43 -17 13 -50 31 -75 39 -24 9 -55 26 -69 39 -14 13 -52 38 -85 56 -33 19 -100 57 -149 87 -49 29 -94 53 -100 53 -6 0 -29 14 -50 30 -22 17 -45 30 -51 30 -6 0 -50 25 -98 55 -47 30 -90 55 -94 55 -5 0 -31 15 -58 33 -28 19 -63 40 -80 49 -113 57 -163 86 -301 175 -36 22 -77 44 -91 48 -14 3 -42 19 -62 34 -20 16 -53 34 -73 40 -20 7 -42 19 -50 28 -7 9 -31 24 -53 34 -22 11 -62 33 -90 50 -162 102 -487 285 -643 363 -73 37 -114 105 -125 208 -3 33 -20 90 -41 136 -20 44 -36 87 -36 95 0 9 -13 25 -29 36 -16 12 -32 34 -36 50 -3 16 -23 47 -43 69 -20 22 -50 55 -67 74 -49 54 -173 136 -288 188 l-107 49 -148 6 c-333 15 -516 -40 -702 -210 -19 -18 -42 -36 -51 -41 -20 -11 -169 -207 -169 -223 0 -6 -15 -51 -34 -99 -84 -215 -83 -501 3 -669 10 -21 26 -62 35 -91 43 -148 363 -415 536 -447 19 -4 46 -14 60 -23 54 -34 428 -23 486 14 72 48 179 54 248 15 28 -16 62 -32 76 -36 14 -4 34 -16 45 -26 11 -10 40 -25 65 -34 24 -8 68 -34 97 -56 30 -22 71 -47 91 -56 20 -8 58 -30 83 -49 26 -19 49 -34 52 -34 10 0 195 -115 290 -179 21 -14 58 -37 82 -51 74 -42 138 -81 181 -110 22 -15 53 -30 70 -34 16 -4 38 -15 49 -25 11 -10 54 -37 95 -61 41 -25 108 -66 148 -92 40 -26 82 -50 94 -53 11 -4 36 -18 55 -31 20 -13 43 -24 53 -24 9 0 25 -10 36 -21 10 -12 37 -30 59 -40 22 -10 51 -25 65 -33 14 -8 73 -38 132 -66 59 -28 110 -55 113 -60 3 -5 25 -14 48 -21 23 -6 50 -18 59 -26 9 -8 59 -36 110 -62 51 -26 136 -73 189 -104 53 -31 127 -69 163 -86 37 -17 80 -41 96 -53 16 -13 54 -39 86 -58 31 -19 99 -62 150 -95 51 -33 116 -73 145 -90 28 -16 81 -50 118 -73 36 -24 83 -53 104 -64 21 -10 78 -46 125 -79 48 -32 95 -59 104 -59 10 0 32 -13 50 -28 18 -16 55 -41 82 -58 26 -16 61 -37 77 -48 121 -76 375 -77 489 -2 20 13 58 35 85 50 28 14 71 41 97 59 75 51 135 87 212 127 66 34 163 88 274 152 26 15 68 39 94 53 26 13 50 30 53 36 4 6 26 19 49 30 22 11 68 36 101 56 33 20 81 48 108 62 26 14 100 56 165 92 64 36 124 68 133 72 10 3 55 29 100 58 79 49 161 95 254 142 21 11 51 27 65 37 79 53 109 71 140 81 19 6 46 22 60 35 14 13 43 30 65 37 36 13 117 60 200 116 17 11 54 32 83 47 61 31 76 49 108 140 l24 65 0 1304 c0 1172 2 1305 16 1319 12 13 40 16 135 16 134 0 152 6 168 51 21 61 15 1302 -6 1322 -14 12 -47 16 -149 19 -92 2 -136 7 -147 17 -16 12 -17 75 -17 716 0 701 0 703 -22 761 -28 73 -71 113 -173 163 -45 21 -115 59 -157 85 -42 25 -81 46 -85 46 -5 0 -25 11 -44 26 -19 14 -52 34 -74 45 -94 47 -125 65 -147 85 -13 12 -57 40 -98 62 -41 22 -124 68 -185 102 -60 34 -132 72 -160 86 -27 13 -67 38 -88 55 l-39 32 3 351 c3 369 0 394 -44 408 -7 2 -201 1 -432 -3 -876 -15 -842 -15 -873 12 -50 45 -123 91 -174 110 -28 10 -61 28 -73 39 -12 12 -38 25 -58 31 -20 5 -49 20 -64 33 -15 12 -42 28 -60 35 -17 7 -41 23 -54 37 -12 13 -27 24 -32 24 -6 0 -42 20 -81 43 -79 49 -220 128 -295 167 -27 14 -58 33 -68 43 -11 9 -35 22 -54 29 -19 6 -47 21 -64 33 -16 12 -66 41 -110 65 -44 24 -98 55 -120 70 -22 15 -53 31 -70 37 -16 6 -69 35 -117 64 -84 53 -135 83 -243 144 -29 17 -59 36 -67 42 -8 7 -34 19 -57 28 -24 8 -52 26 -63 40 -11 14 -27 25 -37 25 -9 0 -48 21 -86 46 -157 104 -263 136 -335 101z M10385 11940 c-126 -3 -231 -7 -233 -8 -29 -20 -50 -659 -26 -781 10 -48 14 -48 364 -55 179 -3 346 -9 372 -12 77 -10 78 -7 78 444 0 373 0 379 -21 398 -24 22 -107 24 -534 14z M12225 11403 c-128 -3 -141 -5 -157 -24 -20 -24 -28 -1281 -9 -1332 l9 -24 244 -6 c512 -14 1098 -10 1118 8 17 16 18 52 17 682 l-2 665 -24 19 c-23 19 -584 24 -1196 12z M4750 10307 c-84 -28 -355 -190 -390 -232 -6 -7 -25 -17 -41 -20 -17 -4 -45 -20 -63 -36 -18 -15 -53 -37 -78 -48 -25 -11 -49 -24 -53 -31 -4 -6 -34 -24 -68 -40 -34 -16 -93 -49 -130 -74 -38 -25 -78 -48 -90 -52 -12 -3 -44 -21 -72 -39 -54 -35 -187 -111 -275 -157 -30 -16 -67 -42 -82 -59 -18 -19 -37 -29 -55 -29 -16 0 -50 -13 -75 -29 -25 -16 -56 -32 -69 -36 -57 -18 -179 -109 -204 -152 -14 -24 -30 -43 -34 -43 -42 0 -55 -689 -41 -2167 0 -54 56 -68 110 -28 18 13 49 30 69 36 20 6 47 22 61 35 14 12 45 32 70 44 51 23 124 72 190 125 25 20 95 73 155 117 211 154 280 223 347 344 l43 79 -1 235 c0 225 -2 238 -26 310 -31 89 -41 172 -28 220 18 65 199 215 285 236 17 4 87 39 157 78 70 39 145 80 167 91 22 11 50 30 63 41 13 12 41 30 62 40 55 25 207 177 244 244 54 98 69 215 53 410 -7 74 -16 200 -20 280 -12 207 -57 338 -114 330 -1 0 -31 -11 -67 -23z M14135 9884 c-12 -4 -414 -15 -496 -14 -95 1 -90 23 -91 -420 0 -214 4 -386 9 -391 19 -19 784 -16 807 2 20 17 21 26 23 371 0 194 2 362 3 372 3 50 -53 81 -153 82 -50 1 -96 0 -102 -2z M7565 9854 c-223 -44 -480 -251 -598 -483 -61 -118 -94 -237 -81 -294 9 -44 -13 -85 -65 -114 -25 -14 -55 -34 -66 -43 -11 -10 -35 -22 -52 -28 -18 -6 -53 -25 -77 -41 -24 -17 -82 -50 -128 -74 -136 -72 -181 -99 -216 -129 -18 -15 -44 -28 -57 -28 -14 0 -42 -15 -64 -35 -21 -19 -58 -44 -82 -55 -24 -11 -73 -38 -109 -60 -36 -22 -84 -48 -106 -59 -23 -11 -45 -25 -49 -31 -4 -7 -31 -23 -59 -37 -28 -13 -80 -42 -116 -63 -36 -21 -89 -50 -118 -64 -29 -14 -72 -40 -95 -59 -23 -18 -56 -39 -74 -46 -17 -7 -34 -19 -37 -26 -2 -7 -26 -21 -53 -31 -26 -9 -55 -23 -64 -31 -9 -7 -45 -28 -80 -47 -96 -49 -221 -122 -249 -144 -14 -11 -43 -27 -65 -36 -22 -10 -49 -25 -60 -35 -11 -10 -69 -44 -130 -75 -60 -32 -119 -66 -130 -76 -11 -11 -38 -26 -59 -35 -22 -9 -52 -30 -67 -46 -16 -17 -37 -29 -51 -29 -14 0 -51 -17 -84 -39 -32 -21 -102 -63 -154 -93 -214 -124 -396 -232 -418 -249 -13 -10 -40 -23 -60 -30 -20 -6 -55 -25 -76 -40 -22 -16 -46 -29 -53 -29 -7 0 -27 -13 -45 -28 -18 -16 -47 -34 -64 -39 -17 -6 -60 -31 -95 -56 -35 -24 -95 -60 -134 -80 -85 -43 -180 -136 -190 -186 -12 -59 -9 -2992 3 -3023 15 -37 108 -130 152 -153 19 -10 55 -32 80 -50 25 -18 83 -52 130 -75 47 -24 100 -56 118 -72 18 -15 40 -28 49 -28 16 0 40 -13 248 -136 50 -29 107 -60 127 -68 45 -19 305 -173 313 -185 3 -5 18 -12 35 -16 16 -3 45 -19 66 -35 20 -16 51 -32 70 -36 19 -3 43 -17 53 -30 10 -13 47 -39 82 -57 35 -19 82 -47 104 -62 22 -15 72 -45 110 -67 39 -22 84 -49 102 -61 17 -12 78 -49 133 -82 56 -33 116 -72 134 -86 17 -15 41 -29 53 -33 11 -4 48 -24 81 -45 206 -134 500 -187 669 -121 162 63 211 87 243 116 19 18 52 39 74 48 21 9 52 27 70 41 89 74 119 95 130 95 7 0 28 11 47 25 19 14 104 65 189 112 85 47 166 96 180 108 14 12 41 27 60 34 19 6 43 20 55 30 11 10 38 24 60 31 22 7 47 18 55 26 8 7 44 26 80 43 62 30 86 45 175 109 22 16 52 33 65 37 14 4 45 23 70 42 25 19 70 49 100 66 94 55 85 124 -25 176 -25 12 -62 36 -83 55 -20 19 -55 41 -77 50 -22 9 -49 26 -61 37 -46 43 -368 229 -397 229 -6 0 -34 12 -61 26 -63 34 -303 34 -366 0 -19 -10 -56 -29 -82 -42 -26 -13 -52 -33 -58 -44 -6 -11 -28 -29 -49 -39 -21 -11 -53 -33 -71 -48 -34 -29 -91 -61 -246 -138 -50 -24 -99 -54 -109 -65 -10 -11 -26 -20 -35 -20 -10 0 -35 -12 -56 -26 -74 -51 -193 -28 -285 53 -9 7 -35 24 -58 36 -82 44 -198 111 -317 183 -67 41 -126 74 -131 74 -6 0 -41 20 -79 45 -37 25 -72 45 -78 45 -5 0 -24 11 -41 25 -18 13 -57 36 -86 50 -30 14 -70 35 -89 47 -128 78 -301 178 -309 178 -5 0 -45 24 -90 54 -45 30 -95 59 -111 66 -24 10 -74 71 -115 140 -8 12 -10 301 -9 897 l1 878 26 51 c49 97 84 126 307 249 58 33 119 69 135 81 17 12 45 26 62 32 18 6 50 24 70 40 21 16 60 37 87 47 26 9 62 30 80 45 17 15 47 35 66 45 19 10 53 30 75 45 22 15 51 31 65 35 14 4 52 24 85 45 33 20 83 49 110 64 28 14 77 42 110 61 33 19 76 42 95 51 19 9 50 29 68 45 18 16 38 29 44 29 10 0 178 95 228 130 14 10 43 27 65 39 22 12 67 39 101 60 34 21 75 43 92 49 18 6 51 24 74 40 24 16 99 60 168 97 124 67 177 98 248 144 20 13 50 28 67 34 16 6 46 23 66 39 20 15 41 28 46 28 5 0 47 23 92 50 45 28 85 50 88 50 3 0 21 11 39 25 18 14 52 34 76 45 24 11 72 38 108 60 36 21 91 53 124 69 32 17 72 41 90 54 150 112 245 137 342 91 95 -46 389 -50 515 -6 48 17 111 35 141 41 42 9 69 23 113 61 33 28 63 50 68 50 24 0 156 144 232 254 48 68 55 82 55 104 0 13 15 56 32 95 l33 72 0 215 -1 215 -31 70 c-17 39 -33 82 -37 96 -12 51 -103 194 -164 255 -147 149 -334 254 -486 274 -104 14 -350 10 -431 -6z M13495 8820 c-154 -3 -288 -9 -297 -13 -47 -23 -48 -34 -48 -417 l0 -361 23 -23 c22 -22 31 -23 252 -29 391 -12 531 -9 549 9 17 17 25 785 8 811 -14 22 -63 33 -135 31 -40 -1 -198 -5 -352 -8z M8680 7700 c-386 -7 -407 -11 -403 -65 3 -43 3 -665 0 -695 -5 -53 21 -56 513 -60 336 -3 383 7 351 77 -9 20 -12 119 -10 372 l2 346 -24 11 c-41 20 -73 21 -429 14z M14259 7326 c-2 -2 -152 -6 -334 -8 -325 -3 -330 -3 -352 -25 l-23 -22 0 -380 0 -381 26 -17 c28 -18 7 -17 510 -24 243 -3 293 3 294 39 1 27 2 739 1 749 -4 43 -95 95 -122 69z M6724 6899 c-22 -25 -33 -75 -28 -127 3 -26 6 -307 7 -624 2 -563 2 -578 22 -597 23 -22 201 -28 944 -32 l364 -3 29 33 c25 28 29 38 22 65 -11 48 -16 878 -5 1081 9 171 8 181 -10 200 -27 28 -1320 32 -1345 4z M8715 2380 c-49 -23 -99 -50 -110 -60 -12 -11 -36 -25 -55 -31 -19 -7 -46 -22 -60 -35 -14 -12 -47 -32 -75 -44 -27 -11 -70 -36 -95 -54 -26 -19 -57 -37 -69 -41 -12 -3 -29 -17 -37 -31 -10 -15 -35 -30 -66 -39 -27 -8 -66 -27 -86 -43 -70 -55 -101 -66 -204 -70 -107 -5 -155 12 -270 91 -98 68 -231 149 -256 157 -37 12 -116 54 -147 78 -15 12 -42 26 -60 32 -19 6 -64 31 -100 55 -107 72 -190 82 -245 30 -14 -14 -36 -25 -47 -25 -12 0 -35 -11 -51 -25 -17 -14 -45 -30 -64 -36 -18 -6 -55 -21 -83 -34 -156 -74 -203 -95 -212 -95 -5 0 -18 -9 -28 -20 -9 -10 -33 -24 -52 -31 -34 -11 -58 -24 -208 -116 -81 -49 -135 -96 -135 -117 0 -23 48 -73 77 -81 15 -3 57 -26 93 -50 36 -23 99 -61 140 -82 41 -22 92 -50 112 -64 20 -13 85 -51 143 -84 59 -33 132 -76 164 -96 31 -20 71 -40 89 -44 18 -4 38 -16 45 -27 7 -11 35 -31 62 -44 28 -13 86 -46 130 -74 44 -27 85 -50 90 -50 6 0 35 -16 65 -36 30 -20 74 -45 96 -55 23 -10 48 -26 55 -35 8 -9 32 -25 54 -36 22 -10 70 -35 107 -56 36 -20 86 -48 110 -61 23 -13 57 -34 73 -46 17 -12 47 -26 67 -29 21 -4 44 -16 52 -27 28 -40 149 -51 206 -19 19 10 55 29 80 41 25 12 59 32 75 44 17 12 64 39 105 60 153 77 471 258 514 292 15 12 37 25 49 29 12 3 37 17 55 31 17 13 47 29 65 35 17 6 46 21 62 33 17 12 47 28 68 34 21 7 50 23 65 35 15 13 43 31 62 41 19 10 49 28 65 40 17 13 41 26 55 30 14 4 36 16 50 25 14 10 46 29 70 42 243 130 380 231 380 279 0 37 -113 120 -322 234 -68 38 -130 74 -138 81 -8 7 -35 20 -60 30 -25 10 -67 33 -94 51 -26 18 -53 33 -58 33 -5 0 -24 11 -41 24 -121 92 -208 107 -322 56z';
+
+function logo(size, claro){
+  var id = 'lg' + (++_logoN);
+  return '<svg class="iso" width="'+size+'" height="'+size+'" viewBox="0 0 64 64" '+
+    'role="img" aria-label="Labs24k">'+
+    '<defs>'+_grad(id, claro, 4, 4, 60, 60)+'</defs>'+
+    '<g transform="translate(-13.294,-7.609) scale(0.052324)">'+
+      '<g transform="translate(0,1398) scale(0.1,-0.1)" fill="url(#'+id+')" stroke="none">'+
+        '<path d="'+ISO_D+'"/>'+
+      '</g></g></svg>';
+}
+
+/* --------------------------- LOGOTIPO TIPOGRÁFICO ----------------------- */
+/* «Labs24K» con el degradado de marca. Va en SVG y no en HTML porque el
+   recorte de degradado sobre texto (background-clip) se pierde al imprimir en
+   varios navegadores, y estas letras acaban en propuestas y presupuestos. */
+function marcaTexto(alto, claro){
+  var id = 'mt' + (++_logoN);
+  /* La caja se ajusta a la altura real de las letras: «Labs24K» no tiene
+     ningún trazo descendente, así que recortar el hueco de abajo hace que el
+     logotipo se alinee solo con el isotipo, sin cuadrar márgenes a mano. */
+  var ancho = Math.round(alto * 5);
+  /* textLength fija el ancho del logotipo: aunque el ordenador del cliente no
+     tenga Roboto y caiga en Arial o en la fuente del sistema, la marca ocupa
+     exactamente lo mismo y no se recorta ni baila. Es la diferencia entre un
+     logotipo y un texto que casualmente pone el nombre. */
+  return '<svg class="marca-txt" width="'+ancho+'" height="'+alto+'" viewBox="0 0 420 84" '+
+    'role="img" aria-label="Labs24K">'+
+    '<defs>'+_grad(id, claro, 0, 0, 420, 0)+'</defs>'+
+    '<text x="4" y="76" fill="url(#'+id+')" font-size="96" font-weight="800" '+
+      'textLength="412" lengthAdjust="spacingAndGlyphs" '+
+      'font-family="Roboto,\'Segoe UI\',system-ui,-apple-system,'+
+      'Helvetica,Arial,sans-serif">Labs24K</text></svg>';
+}
+
+/* ------------------------------ BLOQUE COMPLETO ------------------------- */
+/* opc.lema  añade el lema debajo · opc.claro  versión para fondo claro
+   opc.fila  isotipo y texto en horizontal (por defecto) o apilados */
+function logotipo(alto, opc){
+  opc = opc || {};
+  var iso = logo(Math.round(alto * (opc.lema ? 1.05 : 1)), opc.claro);
+  var txt = marcaTexto(Math.round(alto * 0.52), opc.claro);
+  var lema = opc.lema
+    ? '<div class="marca-lema'+(opc.claro?' claro':'')+'">'+esc(MARCA.lema)+'</div>' : '';
+  return '<div class="marca'+(opc.apilado?' apilada':'')+'">'+
+    iso + '<div class="marca-col">' + txt + lema + '</div></div>';
+}
+
+/* ------------------------------ UTILES ---------------------------------- */
+function eur(n){ return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0,useGrouping:true}).format(n); }
+function num(n){ return new Intl.NumberFormat('es-ES',{useGrouping:true}).format(n); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+/* Solo se acepta https://. Corta javascript: y data: si alguien manipula la
+   configuracion guardada en el navegador. */
+function urlSegura(u){
+  u = String(u||'').trim();
+  return /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}([/?#].*)?$/i.test(u) ? u : '';
+}
+function q(s){ return document.querySelector(s); }
+function qa(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+/* los avisos se guardan aparte: renderApp() reescribe el body y los borraria */
+var TOASTS = [];
+function toast(msg){
+  var t = document.createElement('div'); t.className='toast'; t.innerHTML = ic('check',16)+' '+esc(msg);
+  t.style.display='flex'; t.style.alignItems='center'; t.style.gap='9px';
+  TOASTS.push(t); document.body.appendChild(t);
+  setTimeout(function(){
+    t.remove();
+    var i = TOASTS.indexOf(t); if(i>-1) TOASTS.splice(i,1);
+  }, 3600);
+}
+function reponerToasts(){
+  TOASTS.forEach(function(t, i){
+    t.style.bottom = (20 + i*58) + 'px';
+    document.body.appendChild(t);
+  });
+}
+function delta(v){
+  var up = v >= 0;
+  return '<span class="delta '+(up?'up':'down')+'">'+ic(up?'arrowUp':'arrowDown',11)+(up?'+':'')+v+'%</span>';
+}
+
+/* ------------------------------ GRAFICOS SVG ---------------------------- */
+function areaChart(data, opt){
+  opt = opt || {}; var w = 100, h = opt.h || 34, pad = 2;
+  var max = Math.max.apply(null,data), min = Math.min.apply(null,data);
+  var rng = (max-min)||1, id = 'g'+Math.random().toString(36).slice(2,8);
+  var col = opt.color || '#4ADE80';
+  var pts = data.map(function(v,i){
+    var x = (i/(data.length-1))*w;
+    var y = h-pad-((v-min)/rng)*(h-pad*2);
+    return [x,y];
+  });
+  var line = pts.map(function(p,i){ return (i?'L':'M')+p[0].toFixed(2)+' '+p[1].toFixed(2); }).join(' ');
+  var area = line+' L'+w+' '+h+' L0 '+h+' Z';
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" style="width:100%;height:'+(opt.px||70)+'px">'+
+    '<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1">'+
+    '<stop offset="0%" stop-color="'+col+'" stop-opacity=".38"/>'+
+    '<stop offset="100%" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+area+'" fill="url(#'+id+')"/>'+
+    '<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>'+
+    '</svg>';
+}
+function barChart(data, labels, opt){
+  opt = opt||{}; var col = opt.color||'#FBBF24', h = opt.px||120;
+  var max = Math.max.apply(null,data)||1;
+  var bars = data.map(function(v,i){
+    var pct = Math.max(4,(v/max)*100);
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0">'+
+      '<div style="width:100%;height:'+h+'px;display:flex;align-items:flex-end">'+
+      '<div title="'+esc(labels[i]+': '+num(v))+'" style="width:100%;height:'+pct.toFixed(1)+'%;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,'+col+',rgba(0,0,0,0));opacity:'+(0.55+0.45*(v/max)).toFixed(2)+'"></div></div>'+
+      '<span style="font-size:10px;color:var(--txt-3)" class="trunc">'+esc(labels[i])+'</span></div>';
+  }).join('');
+  return '<div style="display:flex;align-items:flex-end;gap:6px">'+bars+'</div>';
+}
+function donut(pct, color, size, label){
+  size = size||64; color = color||'#17C8C0';
+  var r = 26, c = 2*Math.PI*r, off = c*(1-pct/100);
+  return '<div style="position:relative;width:'+size+'px;height:'+size+'px">'+
+    '<svg width="'+size+'" height="'+size+'" viewBox="0 0 64 64" style="transform:rotate(-90deg)">'+
+    '<circle cx="32" cy="32" r="'+r+'" fill="none" stroke="rgba(148,163,184,.16)" stroke-width="7"/>'+
+    '<circle cx="32" cy="32" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="7" stroke-linecap="round" '+
+    'stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg>'+
+    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:'+(size/4.6).toFixed(0)+'px;font-weight:700;color:#fff">'+(label||pct+'%')+'</div></div>';
+}
+function progressRow(name, val, max, color, right){
+  var pct = Math.min(100,(val/max)*100);
+  return '<div class="rank-it"><div style="flex:1;min-width:0">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'+
+    '<span class="nm trunc">'+esc(name)+'</span><span class="vl">'+esc(right!=null?right:num(val))+'</span></div>'+
+    '<div class="bar"><i style="width:'+pct.toFixed(1)+'%;background:'+(color||'#17C8C0')+'"></i></div></div></div>';
+}
+
+/* ------------------------------ DATOS MOCK ------------------------------ */
+var ROLES = {
+  admin:      {label:'Administrador',  desc:'Control total de la red'},
+  manager:    {label:'Jefe de Equipo', desc:'Supervision comercial'},
+  commercial: {label:'Gestión Comercial', desc:'Venta y prospección'},
+  backoffice: {label:'Back Office',    desc:'Tramitación y contratos'}
+};
+var MENU = [
+  {id:'dashboard',   label:'Panel Principal',            icon:'dashboard', sec:'General',   roles:['admin','manager','commercial','backoffice']},
+  {id:'calendar',    label:'Calendario y Citas',         icon:'calendar',  sec:'General',   roles:['admin','manager','commercial'], n:3},
+  {id:'academy',     label:'Academia y Cursos',          icon:'book',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
+  {id:'mission',     label:'Mission Control',            icon:'spark',     sec:'General',   roles:['admin','manager']},
+  {id:'quotes',      label:'Presupuestos',               icon:'calc',      sec:'Comercial', roles:['admin','manager','commercial']},
+  {id:'packs',       label:'Packs Web 3D',               icon:'building',  sec:'Comercial', roles:['admin','manager','commercial']},
+  {id:'ranking',     label:'Ranking de la Red',          icon:'trend',     sec:'Comercial', roles:['admin','manager','commercial']},
+  {id:'funnels',     label:'Embudos de Venta',           icon:'filter',    sec:'Comercial', roles:['admin','manager','commercial']},
+  {id:'audits',      label:'Auditorías IA',              icon:'search',    sec:'Comercial', roles:['admin','manager','commercial']},
+  {id:'clients',     label:'Clientes Activos',           icon:'users',     sec:'Comercial', roles:['admin','manager','commercial','backoffice']},
+  {id:'contracts',   label:'Contratos y Facturación',    icon:'file',      sec:'Operaciones', roles:['admin','manager','backoffice'], n:2},
+  {id:'backoffice',  label:'Back Office y Trámites',     icon:'case',      sec:'Operaciones', roles:['admin','backoffice','manager']},
+  {id:'voice_wa',    label:'Asistentes Voz y WhatsApp',  icon:'chat',      sec:'Operaciones', roles:['admin','manager']},
+  {id:'interviews',  label:'Entrevistas y Talento',      icon:'userPlus',  sec:'Operaciones', roles:['admin','manager'], n:2},
+  {id:'integrations',label:'Webmail y MetaTok',          icon:'plug',      sec:'Sistema',   roles:['admin','manager']},
+  {id:'users',       label:'Usuarios y Accesos',         icon:'userPlus',  sec:'Sistema',   roles:['admin']},
+  {id:'settings',    label:'Configuración del Sistema',  icon:'cog',       sec:'Sistema',   roles:['admin','manager','commercial','backoffice']}
+];
+
+var DB = {
+  revenue: {
+    total: 1253235, delta: 12.4,
+    series: [42,48,45,58,62,57,71,68,79,86,82,97],
+    months: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+    sources: [
+      {n:'Command Center 360', v:544120, c:'#17C8C0'},
+      {n:'Agentes de Voz IA',  v:329130, c:'#4ADE80'},
+      {n:'WhatsApp y CRM',     v:194120, c:'#818CF8'},
+      {n:'Mantenimientos',     v:185865, c:'#FBBF24'}
+    ]
+  },
+  funnelStages: [
+    {n:'Prospección', v:115400}, {n:'Auditoría IA', v:125600},
+    {n:'Demo', v:95400}, {n:'Propuesta', v:74800}, {n:'Cierre', v:52300}
+  ],
+  callSeries: [38,52,44,61,58,72,66,81,74,88,92,97,85,94],
+  zones: [
+    {n:'Asturias',  v:412, c:'#17C8C0'}, {n:'Madrid',    v:298, c:'#4ADE80'},
+    {n:'Cataluña',  v:214, c:'#818CF8'}, {n:'C. Valenciana', v:167, c:'#FBBF24'},
+    {n:'Galicia',   v:121, c:'#0FA8A2'}
+  ],
+  channels: {total:45234, delta:6.4, mobile:{v:28640,p:63}, desktop:{v:16594,p:37}},
+  topServices: [
+    {n:'Agente de Voz IA 24/7', s:'Clínicas y despachos', v:24526, up:true, ic:'mic', c:'blue'},
+    {n:'Bot WhatsApp + CRM',    s:'Inmobiliarias',        v:19310, up:true, ic:'chat', c:'green'},
+    {n:'Command Center 360',    s:'Multisede',            v:16480, up:true, ic:'dashboard', c:'violet'},
+    {n:'Auditoría IA Express',  s:'Captación',            v:9370,  up:true, ic:'search', c:'cyan'},
+    {n:'Automatización Meta',   s:'Campañas MetaTok',     v:6115,  up:false,ic:'globe', c:'amber'}
+  ],
+  movements: [
+    {id:'#LK-24512', cli:'Inmobiliaria Gijón Central', srv:'Command Center 360', d:'26/05/2026', v:3000, st:'Cobrado'},
+    {id:'#LK-24509', cli:'Clínica Dental Asturias',    srv:'Agente de Voz IA',   d:'22/05/2026', v:1800, st:'Cobrado'},
+    {id:'#LK-24501', cli:'Despacho Jurídico Oviedo',   srv:'Bot WhatsApp + CRM', d:'19/05/2026', v:1200, st:'Pendiente'},
+    {id:'#LK-24498', cli:'Talleres Norte SL',          srv:'Auditoría IA',       d:'17/05/2026', v:450,  st:'Cobrado'},
+    {id:'#LK-24491', cli:'Hotel Costa Verde',          srv:'Agente de Voz IA',   d:'14/05/2026', v:1800, st:'Vencido'}
+  ],
+  targets: [
+    {n:'Nuevos clientes', v:38, max:50, c:'#FBBF24'},
+    {n:'Llamadas salientes', v:1284, max:1500, c:'#17C8C0'},
+    {n:'Demos realizadas', v:64, max:70, c:'#4ADE80'}
+  ],
+  team: [
+    {n:'Juan Álvarez',   r:'Jefe de Equipo', t:'+34 600 112 233', v:184300, q:96, av:'#17C8C0'},
+    {n:'Marta Rodríguez',r:'Gestión Comercial', t:'+34 600 445 566', v:142800, q:88, av:'#4ADE80'},
+    {n:'Carlos Ruiz',    r:'Gestión Comercial', t:'+34 600 778 899', v:118400, q:74, av:'#818CF8'},
+    {n:'Lucía Fernández',r:'Gestión Comercial', t:'+34 601 223 344', v:96200,  q:61, av:'#FBBF24'},
+    {n:'Sergio Peña',    r:'Back Office',       t:'+34 601 556 677', v:0,      q:100,av:'#0FA8A2'}
+  ],
+  activity: [
+    {t:'Contrato firmado - Inmobiliaria Gijón Central', s:'Marta Rodríguez · hace 12 min', k:'g'},
+    {t:'Auditoría IA completada - Talleres Norte SL',   s:'Motor IA · hace 48 min', k:''},
+    {t:'Nueva cita agendada - Hotel Costa Verde',       s:'Carlos Ruiz · hace 1 h', k:''},
+    {t:'Factura vencida - Hotel Costa Verde',           s:'Back Office · hace 3 h', k:'a'},
+    {t:'Presupuesto enviado - Clínica Dental Asturias', s:'Juan Álvarez · hace 5 h', k:'g'}
+  ],
+  appointments: [
+    {d:8,  h:'09:30', t:'Demo Command Center', c:'Inmobiliaria Gijón Central', k:'blue',  who:'Marta Rodríguez'},
+    {d:8,  h:'12:00', t:'Auditoría IA presencial', c:'Talleres Norte SL',      k:'green', who:'Carlos Ruiz'},
+    {d:9,  h:'10:00', t:'Firma de contrato', c:'Clínica Dental Asturias',      k:'green', who:'Juan Álvarez'},
+    {d:11, h:'16:30', t:'Seguimiento post-venta', c:'Despacho Jurídico Oviedo',k:'amber', who:'Sergio Peña'},
+    {d:15, h:'11:15', t:'Barrido de zona - Poligono', c:'Prospección',         k:'blue',  who:'Lucía Fernández'},
+    {d:22, h:'09:00', t:'Reunion de red comercial', c:'Interno Labs24k',       k:'violet',who:'Todo el equipo'}
+  ],
+  academy: [
+    {id:1,t:'La Mentalidad del Consultor IA', d:'Entender que no vendemos software, sino tiempo y dinero.', m:45, p:100},
+    {id:2,t:'La Rutina de Acero: Tu Día a Día', d:'Dominar el barrido de zona y la prospección local.', m:60, p:100},
+    {id:3,t:'Nichos Estratégicos y Detección de Valor', d:'Especialización en Inmobiliarias, Clínicas y Despachos.', m:50, p:35},
+    {id:4,t:'La Demo Maestra y Cierre de Ventas', d:'Cómo mostrar la tecnología para que el cliente diga "lo quiero".', m:75, p:0},
+    {id:5,t:'Gestión Administrativa y Oficina Virtual', d:'Digitalización de datos y reporte a admin@labs24k.com.', m:40, p:0}
+  ],
+  services: {
+    voice_agent:  {n:'Agente de Voz IA (VAPI/Twilio)', setup:1800, monthly:400},
+    whatsapp_bot: {n:'Automatización WhatsApp y CRM',  setup:1200, monthly:250},
+    command_center:{n:'Labs Command Center 360',       setup:3000, monthly:600},
+    audit:        {n:'Auditoría IA Express',           setup:450,  monthly:0}
+  },
+  quotes: [
+    {id:'P-2026-118', cli:'Hotel Costa Verde',        srv:'Agente de Voz IA', v:1800, st:'Enviado',  d:'02/09/2026'},
+    {id:'P-2026-117', cli:'Autoescuela Principado',   srv:'Bot WhatsApp + CRM', v:1200, st:'Aceptado',d:'28/08/2026'},
+    {id:'P-2026-116', cli:'Gestoría Llanes',          srv:'Command Center 360', v:3000, st:'En revisión', d:'25/08/2026'},
+    {id:'P-2026-115', cli:'Fisioterapia Avilés',      srv:'Auditoría IA', v:450, st:'Rechazado', d:'20/08/2026'}
+  ],
+  contracts: [
+    {id:'C-0341', cli:'Inmobiliaria Gijón Central', srv:'Command Center 360', setup:3000, m:600, st:'Activo',  f:'Emitida',   next:'01/10/2026'},
+    {id:'C-0340', cli:'Clínica Dental Asturias',    srv:'Agente de Voz IA',   setup:1800, m:400, st:'Activo',  f:'Emitida',   next:'01/10/2026'},
+    {id:'C-0338', cli:'Despacho Jurídico Oviedo',   srv:'Bot WhatsApp + CRM', setup:1200, m:250, st:'Alta',    f:'Pendiente', next:'15/09/2026'},
+    {id:'C-0335', cli:'Hotel Costa Verde',          srv:'Agente de Voz IA',   setup:1800, m:400, st:'Impago',  f:'Vencida',   next:'-'},
+    {id:'C-0331', cli:'Talleres Norte SL',          srv:'Auditoría IA',       setup:450,  m:0,   st:'Cerrado', f:'Emitida',   next:'-'}
+  ],
+  audits: [
+    {id:'A-092', cli:'Talleres Norte SL',      sec:'Automoción',   score:38, ahorro:2100, st:'Completada', d:'01/09/2026'},
+    {id:'A-091', cli:'Hotel Costa Verde',      sec:'Hostelería',   score:52, ahorro:3400, st:'Completada', d:'29/08/2026'},
+    {id:'A-090', cli:'Gestoría Llanes',        sec:'Despachos',    score:61, ahorro:1800, st:'En proceso', d:'28/08/2026'},
+    {id:'A-089', cli:'Fisioterapia Avilés',    sec:'Clínicas',     score:44, ahorro:1250, st:'Completada', d:'22/08/2026'}
+  ],
+  assistants: [
+    {n:'Recepcionista IA - Clínicas', ch:'Voz (VAPI)', st:'Activo',  calls:1284, rate:92, c:'green'},
+    {n:'Captador Inmobiliario',       ch:'WhatsApp',   st:'Activo',  calls:3412, rate:87, c:'green'},
+    {n:'Filtro de Leads Jurídico',    ch:'Voz (VAPI)', st:'Activo',  calls:642,  rate:78, c:'green'},
+    {n:'Postventa Automoción',        ch:'WhatsApp',   st:'Pausado', calls:218,  rate:64, c:'amber'}
+  ],
+  pipeline: [
+    {st:'Prospección', items:[
+      {c:'Cerrajería Express Gijón', v:1800, o:'Lucía Fernández'},
+      {c:'Academia Idiomas Oviedo',  v:1200, o:'Carlos Ruiz'},
+      {c:'Podología Siero',          v:450,  o:'Lucía Fernández'}]},
+    {st:'Auditoría IA', items:[
+      {c:'Gestoría Llanes',          v:3000, o:'Marta Rodríguez'},
+      {c:'Transportes Nalón',        v:1800, o:'Carlos Ruiz'}]},
+    {st:'Demo', items:[
+      {c:'Hotel Costa Verde',        v:1800, o:'Juan Álvarez'},
+      {c:'Autoescuela Principado',   v:1200, o:'Marta Rodríguez'}]},
+    {st:'Propuesta', items:[
+      {c:'Fisioterapia Avilés',      v:450,  o:'Lucía Fernández'},
+      {c:'Notaría Centro',           v:3000, o:'Juan Álvarez'}]},
+    {st:'Cierre', items:[
+      {c:'Inmobiliaria Gijón Central', v:3000, o:'Marta Rodríguez'},
+      {c:'Clínica Dental Asturias',    v:1800, o:'Juan Álvarez'}]}
+  ],
+  trámites: [
+    {id:1, cli:'Inmobiliaria Gijón Central', st:'En Auditoría IA',        role:'Gestión Comercial', doc:'auditoría_v1.pdf',    upd:'hace 2 h'},
+    {id:2, cli:'Clínica Dental Asturias',    st:'Implementando VAPI',     role:'Back Office',       doc:'contrato_firmado.pdf',upd:'hace 5 h'},
+    {id:3, cli:'Despacho Jurídico Oviedo',   st:'Configurando WhatsApp',  role:'Administrador',     doc:'briefing_inicial.pdf',upd:'ayer'},
+    {id:4, cli:'Hotel Costa Verde',          st:'Reclamación de impago',  role:'Back Office',       doc:'factura_0335.pdf',    upd:'ayer'},
+    {id:5, cli:'Talleres Norte SL',          st:'Entregado y cerrado',    role:'Administrador',     doc:'acta_entrega.pdf',    upd:'hace 3 d'}
+  ],
+  clients: [
+    {n:'Inmobiliaria Gijón Central', sec:'Inmobiliaria', st:'Activo',    mrr:600, alta:'12/03/2026', ges:'Marta Rodríguez', sat:96},
+    {n:'Clínica Dental Asturias',    sec:'Clínicas',     st:'Activo',    mrr:400, alta:'02/04/2026', ges:'Juan Álvarez',    sat:92},
+    {n:'Despacho Jurídico Oviedo',   sec:'Despachos',    st:'Onboarding',mrr:250, alta:'21/08/2026', ges:'Carlos Ruiz',     sat:80},
+    {n:'Hotel Costa Verde',          sec:'Hostelería',   st:'Riesgo',    mrr:400, alta:'15/01/2026', ges:'Juan Álvarez',    sat:48},
+    {n:'Talleres Norte SL',          sec:'Automoción',   st:'Cerrado',   mrr:0,   alta:'08/11/2025', ges:'Lucía Fernández', sat:70}
+  ]
+};
+
+/* ------------------------------ ESTADO --------------------------------- */
+var S = {
+  logged:false,
+  role:'admin',
+  view:'dashboard',
+  name:'Juan Álvarez',
+  phone:'+34 600 112 233',
+  email:'juan.alvarez@labs24k.com',
+  sidebar:false,
+  quote:{cli:'', srv:'command_center', setup:3000, monthly:600, months:12, disc:0}
+};
+
+/* ------------------------------ ARRANQUE ------------------------------- */
+function boot(){ cfgCarga(); S.logged ? renderApp() : renderLogin(); }
+
+function renderApp(){
+  paraTimers();          // se destruyen los bucles de la vista anterior
+  var items = MENU.filter(function(m){ return m.roles.indexOf(S.role)>-1; });
+  if(!items.some(function(m){ return m.id===S.view; })) S.view = 'dashboard';
+  var secs = [], html='';
+  items.forEach(function(m){ if(secs.indexOf(m.sec)<0) secs.push(m.sec); });
+  secs.forEach(function(sec){
+    html += '<div class="nav-sec">'+esc(sec)+'</div>';
+    items.filter(function(m){ return m.sec===sec; }).forEach(function(m){
+      html += '<button class="nav-item'+(S.view===m.id?' on':'')+'" data-go="'+m.id+'">'+
+        ic(m.icon,17)+'<span>'+esc(m.label)+'</span>'+(m.n?'<span class="dot">'+m.n+'</span>':'')+'</button>';
+    });
+  });
+  var cur = items.filter(function(m){ return m.id===S.view; })[0] || items[0];
+
+  document.body.innerHTML =
+  '<div class="app">'+
+    (S.sidebar?'<div class="scrim" id="scrim"></div>':'')+
+    '<aside class="sidebar'+(S.sidebar?' open':'')+'">'+
+      '<div class="brand">'+logo(34)+
+        '<div class="bw">'+marcaTexto(19)+
+        '<div class="tag">Command Center 360°</div></div></div>'+
+      '<nav class="nav">'+html+'</nav>'+
+      '<div class="user-card">'+
+        '<div class="avatar">'+esc(S.name.charAt(0).toUpperCase())+'</div>'+
+        '<div style="min-width:0;flex:1"><div class="nm trunc">'+esc(S.name)+'</div>'+
+        '<div class="ph trunc">'+esc(S.phone)+'</div></div>'+
+        '<button class="icon-btn" id="logout" title="Cerrar sesión">'+ic('logout',16)+'</button>'+
+      '</div>'+
+    '</aside>'+
+    '<div class="main">'+
+      '<header class="topbar">'+
+        '<button class="icon-btn burger" id="burger">'+ic('menu',18)+'</button>'+
+        '<div><h2>'+esc(cur.label)+'</h2>'+
+        '<div class="crumb">Labs Command Center 360 · '+esc(cur.sec)+'</div></div>'+
+        '<div class="spacer"></div>'+
+        '<div class="search">'+ic('search',15)+'<input placeholder="Buscar cliente, contrato o presupuesto..."></div>'+
+        barraAcciones()+
+        '<span class="pill-live"><span class="blip"></span>Nodo Hostalia operativo</span>'+
+      '</header>'+
+      '<div class="content"><div class="view" id="view"></div></div>'+
+    '</div>'+
+  '</div>'+
+  (SOPORTE.abierto ? panelAyuda() : '');
+
+  qa('[data-go]').forEach(function(b){ b.onclick=function(){ S.view=b.dataset.go; S.sidebar=false; renderApp(); }; });
+  q('#logout').onclick=function(){ S.logged=false; renderLogin(); };
+  q('#burger').onclick=function(){ S.sidebar=!S.sidebar; renderApp(); };
+  hubEventos();
+  if(q('#scrim')) q('#scrim').onclick=function(){ S.sidebar=false; renderApp(); };
+
+  document.addEventListener('click', function(e){
+    if((SOPORTE.menuCuenta || SOPORTE.menuIdioma) && !e.target.closest('.pop') && !e.target.closest('.hb')){
+      SOPORTE.menuCuenta = false; SOPORTE.menuIdioma = false; renderApp();
+    }
+  }, {once:true});
+
+  var v = q('#view');
+  var VIEWS = {dashboard:viewDashboard, calendar:viewCalendar, academy:viewAcademy, quotes:viewQuotes,
+    packs:viewPacks, ranking:viewRanking, mission:viewMission,
+    funnels:viewFunnels, audits:viewAudits, clients:viewClients, contracts:viewContracts,
+    backoffice:viewBackoffice, voice_wa:viewVoice, integrations:viewIntegrations,
+    interviews:viewInterviews, users:viewUsers, settings:viewSettings};
+  (VIEWS[S.view]||viewDashboard)(v);
+  reponerToasts();
+}
+
+/* ==========================================================================
+   PROYECTO DE SUPABASE  ·  fuente unica
+   Lo usan index.html (el panel) y firmar.html (la pagina que abre el cliente).
+
+   La clave publicable va en el navegador a proposito: no da acceso a nada por
+   si sola. Quien decide que se puede leer o escribir son las politicas RLS y
+   las funciones SECURITY DEFINER de la base de datos.
+
+   La clave de servicio (sb_secret_...) NUNCA se pone aqui: vive solo en la
+   Edge Function.
+   ========================================================================== */
+var SB_DEFECTO = {
+  url:   'https://ezwhkpfqnzyfulivlows.supabase.co',
+  clave: 'sb_publishable_7ZLE8i6zn7AlcaubIBaBrA_rkGvYBsG',
+  activo: true
+};
+
+/* ==========================================================================
+   EL CONTRATO REAL DE LABS24K · fuente unica
+   Texto literal del «Contrato de prestacion de servicios · Diseno,
+   implementacion y gestion de embudos de venta y sistemas de captacion de
+   leads 24/7» de GRUPO EVOLVIX GLOBAL, S.L.
+
+   Este archivo lo usan DOS paginas:
+     · index.html  - el panel, para generar y previsualizar el contrato
+     · firmar.html - la pagina que abre el cliente para firmarlo
+   Al vivir en un solo sitio, las dos versiones no pueden separarse.
+   ========================================================================== */
+
+var MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                'agosto','septiembre','octubre','noviembre','diciembre'];
+
+/* Calculo del precio a partir de la base imponible y el tipo de IVA. */
+function ctrCuentas(C){
+  var base = Number(C.base) || 0;
+  var iva  = Number(C.iva); if(isNaN(iva)) iva = 21;
+  var mes  = Number(C.mensual) || 0;
+  var ivaImporte = base * iva / 100;
+  var total = base + ivaImporte;
+  return {base:base, mes:mes, tipoIva:iva, ivaImporte:ivaImporte,
+          total:total, mitad:total/2, mesConIva:mes*(1+iva/100)};
+}
+
+/* Fecha del encabezamiento: «a 5 de septiembre de 2026». */
+function ctrFechaPartes(C){
+  var d = C && C.fecha ? new Date(C.fecha + 'T12:00:00') : null;
+  if(!d || isNaN(d.getTime())) return null;
+  return {dia:d.getDate(), mes:MESES_ES[d.getMonth()], anio:d.getFullYear()};
+}
+
+function contratoHTML(C, o){
+  o = o || {};
+  var t = ctrCuentas(C);
+  var h = function(x, ph){
+    x = (x === 0 || x) ? String(x).trim() : '';
+    return x ? esc(x) : '<span class="hueco">'+esc(ph)+'</span>';
+  };
+  var f = ctrFechaPartes(C);
+  var p = function(txt){ return '<p class="ct-p">'+txt+'</p>'; };
+  /* Sin número, el epígrafe va centrado y a toda anchura (REUNIDOS, EXPONEN,
+     CLÁUSULAS); con número lleva el cuadrito de la cláusula. */
+  var sec = function(n, tit){
+    return n
+      ? '<div class="doc-sec ct-sec"><span class="n">'+esc(String(n))+'</span> '+esc(tit)+'</div>'
+      : '<div class="doc-sec ct-hito">'+esc(tit)+'</div>'; };
+  var lista = function(items){
+    return '<ul class="ct-ul">'+items.map(function(i){ return '<li>'+i+'</li>'; }).join('')+'</ul>'; };
+
+  var razonLabs = 'GRUPO EVOLVIX GLOBAL, S.L.';
+  var cifLabs   = 'B21779673';
+  var domLabs   = 'Paseo de la Castellana, 95, planta 22, 28046, Madrid (Madrid)';
+
+  return '<div class="doc pdf contrato">'+
+
+    /* ---------------------------- cabecera ---------------------------- */
+    '<div class="doc-top">'+
+      '<div class="doc-brand-row">'+logo(44)+
+        '<div>'+marcaTexto(21)+
+        '<div class="tiny muted">'+esc(razonLabs)+' · CIF '+esc(cifLabs)+'</div></div></div>'+
+      '<div style="text-align:right"><div class="doc-kicker">CONTRATO DE PRESTACIÓN DE SERVICIOS</div>'+
+        '<div class="tiny muted" style="margin-top:4px">Referencia interna <strong>'+
+          esc(o.codigo || '')+'</strong></div></div></div>'+
+
+    '<h1 class="doc-title">Contrato de prestación de servicios</h1>'+
+    '<p class="doc-sub">Diseño, implementación y gestión de embudos de venta y sistemas '+
+      'de captación de leads 24/7</p>'+
+
+    p('En '+h(C.ciudad, '__________ (ciudad)')+', a '+
+      (f ? esc(f.dia)+' de '+esc(f.mes)+' de '+esc(f.anio)
+         : '<span class="hueco">__ de __________ de 20__</span>')+
+      ', se reúnen:')+
+
+    /* ---------------------------- reunidos ---------------------------- */
+    sec('', 'REUNIDOS')+
+    '<div class="doc-parties">'+
+      '<div><span class="k">De una parte · EL PRESTADOR</span>'+
+        '<span class="v big">'+esc(razonLabs)+'</span>'+
+        '<div class="tiny muted">CIF '+esc(cifLabs)+'</div>'+
+        '<div class="tiny muted">'+esc(domLabs)+'</div>'+
+        '<div class="tiny muted">En adelante, «LABS24K»</div></div>'+
+      '<div><span class="k">Y de otra · EL CLIENTE</span>'+
+        '<span class="v big">'+h(C.cliente, 'Nombre y apellidos / razón social del cliente')+'</span>'+
+        '<div class="tiny muted">NIF/CIF '+h(C.cif, 'NIF/CIF del cliente')+'</div>'+
+        '<div class="tiny muted">'+h(C.dir, 'Domicilio del cliente')+'</div>'+
+        '<div class="tiny muted">En adelante, «EL CLIENTE»</div></div>'+
+    '</div>'+
+
+    p('Ambas partes se reconocen mutuamente capacidad legal suficiente para suscribir el presente '+
+      'contrato de prestación de servicios (en adelante, el «Contrato»), y a tal efecto,')+
+
+    /* ---------------------------- exponen ----------------------------- */
+    sec('', 'EXPONEN')+
+    p('<strong>I.</strong> Que LABS24K es una marca especializada en el diseño, desarrollo e '+
+      'implementación de embudos de venta (funnels) y sistemas automatizados de captación y '+
+      'conversión de clientes potenciales disponibles de forma continua (24 horas al día, '+
+      '7 días a la semana).')+
+    p('<strong>II.</strong> Que EL CLIENTE está interesado en contratar los servicios de LABS24K '+
+      'para el diseño e implementación de un embudo de ventas y sistema de captación 24/7 adaptado '+
+      'a su negocio, y LABS24K acepta prestar dichos servicios conforme a los términos y '+
+      'condiciones que se detallan a continuación.')+
+    p('<strong>III.</strong> Que ambas partes acuerdan someterse a las siguientes')+
+
+    /* --------------------------- cláusulas ---------------------------- */
+    sec('', 'CLÁUSULAS')+
+
+    sec('1', 'PRIMERA — Objeto del contrato')+
+    p('El presente Contrato tiene por objeto la prestación, por parte de LABS24K a favor de EL '+
+      'CLIENTE, de un servicio de diseño, desarrollo, implementación y puesta en marcha de un '+
+      'embudo de ventas y sistema de captación de leads automatizado y operativo 24 horas al día, '+
+      '7 días a la semana (en adelante, el «Servicio»), conforme al alcance descrito en la '+
+      'Cláusula Segunda.')+
+
+    sec('2', 'SEGUNDA — Alcance del servicio')+
+    p('En términos sencillos, el sistema funciona de la siguiente manera: un potencial cliente '+
+      'llega a través de un anuncio o de la landing page y deja sus datos; LABS24K le contacta de '+
+      'forma automática (por voz y/o WhatsApp) para confirmar su interés y cualificarlo; si no '+
+      'responde, el sistema hace seguimiento automático en los días siguientes sin intervención '+
+      'manual; los contactos que muestran intención real pasan a una conversación más profunda '+
+      '(llamada de voz IA y/o chat) donde se resuelven dudas y, si corresponde, se coordina una '+
+      'cita o siguiente paso; y EL CLIENTE recibe únicamente los contactos ya cualificados por el '+
+      'canal que se acuerde (WhatsApp, CRM, email, etc.), sin tener que filtrar manualmente el '+
+      'tráfico en bruto.')+
+    p('El Servicio contratado incluye, salvo pacto expreso en contrario recogido en el Anexo I, '+
+      'los siguientes elementos:')+
+    lista([
+      'Auditoría inicial del negocio, público objetivo y oferta comercial del CLIENTE.',
+      'Diseño y desarrollo de página(s) de captación (landing page) optimizada(s) para conversión.',
+      'Implementación de asistentes virtuales de voz basados en inteligencia artificial para la '+
+        'atención, cualificación y seguimiento de llamadas.',
+      'Configuración del sistema de automatización de marketing y ventas (secuencias de '+
+        'email/WhatsApp, CRM y/o herramientas equivalentes).',
+      'Captación, tratamiento y gestión de los datos generados a través de los sistemas y '+
+        'asistentes virtuales contratados.',
+      'Servicios de marketing y publicidad digital, incluyendo la gestión técnica de campañas en '+
+        'plataformas de terceros (Meta Ads, Google Ads u otras equivalentes) — sin incluir el gasto '+
+        'publicitario en sí, conforme a la Cláusula Cuarta.',
+      'Integración con pasarelas de pago, calendario de reservas y/o sistema de agendamiento, '+
+        'según corresponda.',
+      'Configuración de métricas y panel de seguimiento de resultados (leads, conversiones, ventas).',
+      'Puesta en marcha (lanzamiento) del sistema completo y pruebas de funcionamiento.',
+      h(C.anexo, 'Detallar cualquier elemento adicional o excluido: gestión de campañas de tráfico '+
+        'pagado, creación de contenido, etc.')
+    ])+
+    p('Cualquier servicio, funcionalidad o entregable no recogido expresamente en el Anexo I se '+
+      'considerará fuera de alcance y podrá ser objeto de presupuesto adicional.')+
+
+    sec('3', 'TERCERA — Precio y forma de pago')+
+    p('El precio total del Servicio, conforme al presupuesto '+
+      h(C.refPresu, 'referencia del presupuesto')+' aceptado por EL CLIENTE, asciende a '+
+      '<strong>'+esc(eur(t.base))+'</strong>, más el '+esc(String(t.tipoIva))+' % de IVA '+
+      '('+esc(eur(t.ivaImporte))+'), lo que supone un <strong>TOTAL A PAGAR de '+
+      esc(eur(t.total))+'</strong>, que EL CLIENTE abonará a LABS24K de la siguiente forma:')+
+    lista([
+      '<strong>Pago Inicial de Activación (50 %): '+esc(eur(t.mitad))+'</strong>, a la aceptación '+
+        'del presupuesto/firma del presente Contrato, como condición previa al inicio de la '+
+        'prestación del Servicio.',
+      '<strong>Pago Final de Entrega (50 %): '+esc(eur(t.mitad))+'</strong>, a la entrega y '+
+        'verificación de los flujos, y en todo caso como condición previa a la '+
+        'activación/lanzamiento definitivo del sistema.'
+    ])+
+    p('El impago de cualquiera de los plazos facultará a LABS24K para suspender la prestación del '+
+      'Servicio y/o el lanzamiento del sistema hasta la regularización del pago, sin que ello '+
+      'genere derecho a indemnización alguna a favor de EL CLIENTE.')+
+    p('Los pagos se realizarán mediante transferencia bancaria a la cuenta IBAN '+
+      h(C.iban, 'IBAN de la cuenta de cobro')+', titularidad de Grupo Evolvix Global, S.L. Los '+
+      'importes indicados en esta cláusula se entienden sin IVA incluido, aplicándose el tipo '+
+      'vigente a la fecha de este Contrato.')+
+
+    sec('4', 'CUARTA — Inversión publicitaria en Meta Ads / Google Ads: a cargo de EL CLIENTE')+
+    p('La inversión en publicidad (Meta Ads, Google Ads u otras plataformas equivalentes) '+
+      'necesaria para alimentar de tráfico y contactos al sistema es independiente del precio del '+
+      'Servicio recogido en la Cláusula Tercera, y corre por cuenta y a cargo exclusivo de EL '+
+      'CLIENTE. LABS24K se encarga de la configuración técnica, gestión y optimización de las '+
+      'campañas, pero el gasto publicitario en sí se abona directamente por EL CLIENTE a la '+
+      'plataforma correspondiente (o se le repercute según se acuerde expresamente en el Anexo I), '+
+      'y no forma parte de la cuota de LABS24K.')+
+    p('A título meramente orientativo, y sin que constituya garantía de resultados (conforme a la '+
+      'Cláusula Octava), el siguiente esquema de referencia ilustra la relación aproximada entre '+
+      'inversión publicitaria y volumen de contactos, con datos generales de proyectos similares:')+
+    '<table class="ct-tabla"><thead><tr>'+
+      '<th>Inversión publicitaria</th><th>Contactos brutos/mes (aprox.)</th>'+
+      '<th>Contactos cualificados/mes (aprox.)</th></tr></thead><tbody>'+
+      '<tr><td>15 €/día (~450 €/mes)</td><td>≈ 80 – 110 leads</td><td>≈ 12 – 18 leads</td></tr>'+
+      '<tr><td>25 €/día (~750 €/mes)</td><td>≈ 130 – 160 leads</td><td>≈ 20 – 28 leads</td></tr>'+
+      '<tr><td>35 €/día (~1.050 €/mes)</td><td>≈ 180 – 220 leads</td><td>≈ 30 – 40 leads</td></tr>'+
+      '</tbody></table>'+
+    p('Estas cifras son un esquema genérico de referencia y varían significativamente según el '+
+      'sector, la ubicación y la estacionalidad del negocio de EL CLIENTE (no es lo mismo captar '+
+      'propietarios inmobiliarios que pacientes de clínica o clientes de retail). Antes de la '+
+      'puesta en marcha, LABS24K recalibrará estos rangos con los datos específicos de EL CLIENTE '+
+      'y los recogerá en el Anexo I. El rendimiento real depende, además, de factores ajenos a '+
+      'LABS24K (competencia en la subasta publicitaria, calidad de la oferta del CLIENTE, mercado, '+
+      'etc.).')+
+
+    sec('5', 'QUINTA — Plazo de ejecución y entrega')+
+    p('LABS24K se compromete a ejecutar y poner en marcha el Servicio en un plazo estimado de '+
+      h(C.plazo, 'número de semanas/días hábiles')+' desde la recepción del primer pago y de toda '+
+      'la información y materiales necesarios por parte de EL CLIENTE. Este plazo podrá verse '+
+      'ampliado por retrasos imputables a EL CLIENTE (falta de entrega de accesos, contenidos, '+
+      'aprobaciones, etc.), sin que ello constituya incumplimiento por parte de LABS24K.')+
+
+    sec('6', 'SEXTA — Obligaciones de LABS24K')+
+    lista([
+      'Prestar el Servicio con la diligencia profesional propia de su actividad.',
+      'Mantener informado a EL CLIENTE del progreso del proyecto.',
+      'Guardar la confidencialidad de la información facilitada por EL CLIENTE conforme a la '+
+        'Cláusula Undécima.',
+      'Entregar accesos y credenciales de las herramientas configuradas una vez completado el pago '+
+        'íntegro del Servicio.'
+    ])+
+
+    sec('7', 'SÉPTIMA — Obligaciones de EL CLIENTE')+
+    lista([
+      'Facilitar en tiempo y forma toda la información, contenidos, accesos y materiales '+
+        'necesarios para la ejecución del Servicio.',
+      'Abonar los importes pactados en los plazos establecidos en la Cláusula Tercera.',
+      'Revisar y aprobar los entregables dentro de los plazos que se le indiquen.',
+      'Hacer un uso lícito del sistema y de las herramientas contratadas.',
+      'Garantizar que el contenido, ofertas, mensajes, grabaciones de voz y material publicitario '+
+        'que facilite o autorice cumplen con la normativa aplicable a su actividad y sector.'
+    ])+
+
+    sec('8', 'OCTAVA — Resultados y ausencia de garantía de resultados')+
+    p('LABS24K se compromete a implementar el embudo y sistema de captación conforme a las mejores '+
+      'prácticas del sector. No obstante, EL CLIENTE reconoce y acepta que los resultados '+
+      'comerciales (número de leads, ventas o ingresos generados) dependen de múltiples factores '+
+      'externos a LABS24K (mercado, competencia, inversión en tráfico/publicidad, oferta del '+
+      'CLIENTE, etc.), por lo que LABS24K no garantiza resultados económicos concretos, salvo que '+
+      'se pacte expresamente lo contrario en el Anexo I.')+
+
+    sec('9', 'NOVENA — Servicios de marketing, publicidad y asistentes virtuales de voz')+
+    p('Cuando el Servicio incluya asistentes virtuales de voz basados en inteligencia artificial, '+
+      'tratamiento de datos captados a través de los sistemas contratados, y/o servicios de '+
+      'marketing y publicidad digital, ambas partes aceptan expresamente lo siguiente:')+
+    lista([
+      'EL CLIENTE es el único responsable de que el contenido, mensajes, ofertas, reclamos '+
+        'publicitarios, guiones y grabaciones de voz utilizados en los asistentes virtuales y en '+
+        'las campañas de marketing cumplan con la normativa aplicable (protección de consumidores, '+
+        'competencia desleal, publicidad sectorial, propiedad intelectual, etc.), así como de la '+
+        'veracidad de la información facilitada a LABS24K para su configuración.',
+      'LABS24K actúa como proveedor tecnológico y ejecutor técnico de dichos servicios, sin asumir '+
+        'responsabilidad por las decisiones comerciales, contenidos, resultados de conversión o '+
+        'consecuencias derivadas del uso que EL CLIENTE haga de los sistemas.',
+      'El funcionamiento, disponibilidad, políticas de uso, suspensión o bloqueo de cuentas en '+
+        'plataformas de terceros (Meta, Google, WhatsApp Business, proveedores de IA, operadores de '+
+        'telefonía, etc.) escapa al control de LABS24K, que no garantiza la aprobación, '+
+        'mantenimiento o continuidad de dichas cuentas ni será responsable de las decisiones '+
+        'adoptadas por dichos terceros.',
+      'EL CLIENTE reconoce que los asistentes virtuales emplean tecnología de inteligencia '+
+        'artificial y se compromete a informar a los usuarios/interlocutores de dicha circunstancia '+
+        'cuando así lo exija la normativa aplicable.',
+      'LABS24K tratará los datos captados exclusivamente conforme a las instrucciones de EL CLIENTE '+
+        'y a la normativa de protección de datos, actuando en su caso como encargado del '+
+        'tratamiento conforme a la Cláusula Duodécima.'
+    ])+
+
+    sec('10', 'DÉCIMA — Propiedad intelectual')+
+    p('Una vez abonada la totalidad del precio pactado, EL CLIENTE adquirirá los derechos de uso '+
+      'sobre los materiales y desarrollos específicamente creados para él en el marco del Servicio. '+
+      'LABS24K conserva la titularidad de sus metodologías, plantillas, procesos, know-how y '+
+      'cualquier elemento preexistente utilizado en la prestación del Servicio, pudiendo '+
+      'reutilizarlos en otros proyectos.')+
+
+    sec('11', 'UNDÉCIMA — Confidencialidad')+
+    p('Ambas partes se comprometen a mantener la confidencialidad de toda la información de '+
+      'carácter técnico, comercial o estratégico a la que tengan acceso con motivo de la ejecución '+
+      'del presente Contrato, obligación que se mantendrá vigente incluso tras la finalización '+
+      'del mismo.')+
+
+    sec('12', 'DUODÉCIMA — Protección de datos')+
+    p('Los datos personales facilitados por las partes serán tratados conforme al Reglamento (UE) '+
+      '2016/679 (RGPD) y la Ley Orgánica 3/2018 de Protección de Datos Personales y garantía de los '+
+      'derechos digitales, con la única finalidad de gestionar la relación contractual. Cuando '+
+      'LABS24K trate datos de terceros (leads captados) por cuenta de EL CLIENTE, actuará como '+
+      'encargado del tratamiento, formalizándose el correspondiente contrato de encargo de '+
+      'tratamiento como Anexo II al presente Contrato.')+
+
+    sec('13', 'DECIMOTERCERA — Limitación de responsabilidad')+
+    p('La responsabilidad total de LABS24K derivada del presente Contrato quedará limitada, en todo '+
+      'caso, al importe efectivamente abonado por EL CLIENTE por el Servicio. LABS24K no será '+
+      'responsable de daños indirectos, lucro cesante o pérdida de negocio. En particular, y sin '+
+      'ánimo limitativo, LABS24K no será responsable de: (i) las decisiones, suspensiones, bloqueos '+
+      'o cambios de política adoptados por plataformas de terceros (Meta, Google, WhatsApp '+
+      'Business, proveedores de infraestructura de IA, operadores de telefonía, etc.); (ii) los '+
+      'errores, respuestas inexactas o interpretaciones producidas por los asistentes virtuales de '+
+      'voz basados en inteligencia artificial, siempre que hayan sido configurados conforme a las '+
+      'especificaciones acordadas con EL CLIENTE; ni (iii) las consecuencias derivadas del '+
+      'contenido, ofertas o material facilitado o aprobado por EL CLIENTE.')+
+
+    sec('14', 'DECIMOCUARTA — Indemnidad')+
+    p('EL CLIENTE se obliga a mantener indemne a LABS24K, así como a sus socios, administradores y '+
+      'empleados, frente a cualquier reclamación, sanción, demanda o procedimiento iniciado por '+
+      'terceros (incluyendo consumidores, autoridades administrativas, plataformas publicitarias, '+
+      'de mensajería o de telefonía, u otros operadores) que traiga causa de: (i) el contenido, '+
+      'productos, servicios u ofertas comerciales de EL CLIENTE; (ii) el incumplimiento por EL '+
+      'CLIENTE de la normativa aplicable a su actividad, a la publicidad emitida o al tratamiento '+
+      'de datos; o (iii) el uso indebido de los sistemas, asistentes virtuales o herramientas '+
+      'objeto del presente Contrato. Dicha obligación incluye el reembolso de los gastos, '+
+      'honorarios legales y sanciones en que LABS24K pudiera incurrir como consecuencia de lo '+
+      'anterior, salvo que la reclamación derive de dolo o negligencia grave imputable directamente '+
+      'a LABS24K en la ejecución técnica del Servicio.')+
+
+    sec('15', 'DECIMOQUINTA — Resolución del contrato')+
+    p('El presente Contrato podrá resolverse por: (a) mutuo acuerdo de las partes; (b) '+
+      'incumplimiento grave de cualquiera de las obligaciones pactadas, previo requerimiento '+
+      'fehaciente y no subsanado en un plazo de 10 días naturales; o (c) impago de cualquiera de '+
+      'los plazos previstos en la Cláusula Tercera. La resolución no dará derecho a EL CLIENTE a la '+
+      'devolución de las cantidades correspondientes a servicios ya ejecutados.')+
+
+    sec('16', 'DECIMOSEXTA — Legislación aplicable y jurisdicción')+
+    p('El presente Contrato se rige por la legislación española. Para la resolución de cualquier '+
+      'controversia derivada de su interpretación o cumplimiento, las partes se someten '+
+      'expresamente a los Juzgados y Tribunales de Oviedo, con renuncia expresa a cualquier otro '+
+      'fuero que pudiera corresponderles.')+
+
+    p('Y en prueba de conformidad con cuanto antecede, ambas partes firman el presente Contrato por '+
+      'duplicado y a un solo efecto, en el lugar y fecha indicados en el encabezamiento.')+
+
+    /* ----------------------------- firmas -----------------------------
+       Si el contrato ya está firmado en línea, en el recuadro del cliente
+       va su trazo y debajo el sello con fecha, hora e IP: es la prueba de
+       que la firma se hizo, y de cuándo. */
+    '<div class="doc-sign">'+
+      '<div><span class="k">POR LABS24K (Grupo Evolvix Global, S.L.)</span>'+
+        (o.firmaLabs ? '<div class="firma trazada"><img src="'+esc(o.firmaLabs)+'" alt=""></div>'
+                     : '<div class="firma"></div>')+
+        '<div class="tiny muted">'+h(C.firmanteLabs, 'Nombre del firmante')+'</div></div>'+
+      '<div><span class="k">POR EL CLIENTE</span>'+
+        (o.firma ? '<div class="firma trazada"><img src="'+esc(o.firma)+'" alt=""></div>'
+                 : '<div class="firma"></div>')+
+        '<div class="tiny muted">'+h(C.rep, 'Nombre del firmante')+'</div>'+
+        '<div class="tiny muted">DNI '+h(C.dni, 'DNI')+'</div></div>'+
+    '</div>'+
+    (o.sello ? '<div class="ct-sello">'+esc(o.sello)+'</div>' : '')+
+
+    /* ----------------------------- anexo I ---------------------------- */
+    '<div class="ct-anexo">'+
+      sec('', 'ANEXO I — Alcance detallado, precio e hitos')+
+      p('El presente Anexo incorpora, a todos los efectos, el contenido del presupuesto '+
+        h(C.refPresu, 'referencia del presupuesto')+' emitido por LABS24K y aceptado por EL '+
+        'CLIENTE. Completar con el detalle específico del proyecto: módulos/entregables exactos '+
+        '(agentes de voz, WhatsApp AI, landing page, tráfico Meta Ads, etc.), bonus incluidos, '+
+        'importe exacto y desglose de los dos pagos del 50 %, servicios adicionales mensuales '+
+        'opcionales, y cualquier condición particular acordada con el cliente.')+
+      '<div class="doc-sum">'+
+        '<div class="sum-l"><span>Base imponible del Servicio</span><span>'+eur(t.base)+'</span></div>'+
+        '<div class="sum-l"><span>IVA ('+esc(String(t.tipoIva))+' %)</span><span>'+eur(t.ivaImporte)+'</span></div>'+
+        '<div class="sum-l tot"><span>TOTAL A PAGAR</span><span>'+eur(t.total)+'</span></div>'+
+        '<div class="sum-l"><span>1.º pago · activación (50 %)</span><span>'+eur(t.mitad)+'</span></div>'+
+        '<div class="sum-l"><span>2.º pago · entrega (50 %)</span><span>'+eur(t.mitad)+'</span></div>'+
+        (t.mes ? '<div class="sum-l"><span>Servicios mensuales opcionales</span><span>'+
+          eur(t.mes)+' + IVA</span></div>' : '')+
+      '</div>'+
+      (C.anexo ? p(esc(C.anexo).replace(/\n/g,'<br>'))
+               : p('<span class="hueco">Pendiente de detallar el alcance del Anexo I</span>'))+
+      (C.obs ? p('<strong>Condiciones particulares:</strong> '+esc(C.obs)) : '')+
+    '</div>'+
+
+    '<div class="doc-foot"><div>'+esc(razonLabs)+' · CIF '+esc(cifLabs)+'</div>'+
+      '<div class="lema">«Donde la tecnología y el éxito se encuentran»</div></div>'+
+  '</div>';
+}
+
+/* ==========================================================================
+   PÁGINA DE FIRMA DEL CLIENTE  ·  firmar.html
+   La abre el cliente desde el enlace que le llega por WhatsApp o correo. No
+   tiene cuenta ni contraseña: lo único que le identifica es el token de la
+   dirección, que caduca y solo sirve una vez.
+
+   Esta página NO da acceso a nada del panel: habla con dos funciones de la
+   base de datos que solo devuelven el contrato de ese token.
+   ========================================================================== */
+
+var F = {
+  token:null, datos:null, error:null, cargando:true,
+  paso:'contrato',          // contrato · datos · firma · hecho
+  nombre:'', dni:'', acepta:false, trazos:0, enviando:false, ts:null
+};
+
+/* --------------------------- CONEXIÓN ---------------------------------- */
+/* El proyecto es el de _sb.js. Si en ESTE navegador el panel apunta a otro
+   (un proyecto de pruebas), se respeta: es la misma configuración y el mismo
+   origen. En el móvil de un cliente esa preferencia no existe y se usa el
+   proyecto de producción. */
+function firmaProyecto(){
+  try{
+    var g = JSON.parse(localStorage.getItem('labs24k.supabase') || 'null');
+    if(g && g.url && g.clave) return g;
+  }catch(e){}
+  return SB_DEFECTO;
+}
+
+function firmaRpc(fn, args){
+  var P = firmaProyecto();
+  return fetch(P.url + '/rest/v1/rpc/' + fn, {
+    method:'POST',
+    headers:{'Content-Type':'application/json',
+             'apikey': P.clave,
+             'Authorization':'Bearer ' + P.clave},
+    body: JSON.stringify(args || {})
+  }).then(function(r){
+    return r.text().then(function(t){
+      var j = null; try{ j = t ? JSON.parse(t) : null; }catch(e){}
+      if(!r.ok) throw new Error((j && (j.message || j.hint)) || ('HTTP ' + r.status));
+      return j;
+    });
+  });
+}
+
+/* Huella del texto que el cliente tiene delante al firmar. Si algún día se
+   discute qué firmó exactamente, esto lo resuelve. */
+function huellaTexto(txt){
+  if(!(window.crypto && window.crypto.subtle)) return Promise.resolve(null);
+  return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt))
+    .then(function(b){
+      return Array.prototype.map.call(new Uint8Array(b), function(x){
+        return ('0' + x.toString(16)).slice(-2); }).join('');
+    }).catch(function(){ return null; });
+}
+
+/* ------------------------- DATOS DEL CONTRATO --------------------------- */
+/* Traduce lo que devuelve la base de datos al objeto que entiende
+   contratoHTML(). */
+function firmaContrato(){
+  var d = F.datos || {}, x = d.datos || {};
+  return {
+    ciudad: x.ciudad || '', fecha: (d.fecha || '').slice(0,10),
+    cliente: d.cliente || '', cif: d.cif || '', dir: d.dir || '',
+    rep: F.nombre || d.rep || '', dni: F.dni || '',
+    mail: d.mail || '', tel: d.tel || '',
+    refPresu: x.refPresu || '', base: Number(d.base) || 0,
+    iva: d.iva === null || d.iva === undefined ? 21 : Number(d.iva),
+    iban: x.iban || '', plazo: x.plazo || '',
+    servicio: d.servicio || '', mensual: Number(d.mensual) || 0,
+    anexo: x.anexo || '', firmanteLabs: x.firmanteLabs || '', obs: x.obs || ''
+  };
+}
+
+/* ------------------------------ PINTADO --------------------------------- */
+function pintaFirma(){
+  var app = document.getElementById('app');
+
+  if(F.cargando){ app.innerHTML = cajaMensaje('Cargando el contrato...', '', 'espera'); return; }
+
+  if(F.error){ app.innerHTML = cajaError(F.error); return; }
+
+  if(F.paso === 'hecho'){
+    app.innerHTML =
+      '<div class="fx-wrap">'+ cajaHecho() +
+      '<div class="doc pdf contrato">'+'</div></div>';
+    var caja = app.querySelector('.doc');
+    caja.outerHTML = contratoHTML(firmaContrato(), {
+      codigo: F.datos.codigo, firma: F.firmaImg,
+      sello: 'Firmado electrónicamente por ' + F.nombre + ' (DNI ' + F.dni + ') el ' +
+             new Date(F.ts || Date.now()).toLocaleString('es-ES') +
+             ' · contrato ' + F.datos.codigo
+    });
+    var imp = document.getElementById('fx-imprimir');
+    if(imp) imp.onclick = function(){ window.print(); };
+    return;
+  }
+
+  app.innerHTML =
+    '<div class="fx-wrap">'+
+      cabeceraFirma()+
+      '<div class="doc pdf contrato" id="fx-doc"></div>'+
+      panelFirma()+
+    '</div>';
+
+  document.getElementById('fx-doc').outerHTML =
+    contratoHTML(firmaContrato(), {codigo: F.datos.codigo});
+
+  eventosFirma();
+}
+
+function cabeceraFirma(){
+  var cad = F.datos.expira ? new Date(F.datos.expira).toLocaleDateString('es-ES') : '';
+  return '<div class="fx-cab">'+
+    '<div class="fx-marca">'+logo(38)+'<div>'+marcaTexto(19)+
+      '<div class="fx-mini">GRUPO EVOLVIX GLOBAL, S.L. · CIF B21779673</div></div></div>'+
+    '<div class="fx-nota">Contrato <strong>'+esc(F.datos.codigo)+'</strong>'+
+      (cad ? ' · el enlace caduca el '+esc(cad) : '')+'<br>'+
+      'Léelo entero, completa tus datos abajo y fírmalo con el dedo o el ratón.</div>'+
+  '</div>';
+}
+
+function panelFirma(){
+  var listo = F.nombre.trim().length > 2 && F.dni.trim().length > 7 &&
+              F.trazos > 0 && F.acepta;
+  return '<div class="fx-panel">'+
+    '<h2>Firmar el contrato</h2>'+
+    '<div class="fx-campos">'+
+      '<label>Nombre y apellidos del firmante'+
+        '<input id="fx-nombre" type="text" autocomplete="name" value="'+esc(F.nombre)+'" '+
+        'placeholder="Como aparece en tu DNI"></label>'+
+      '<label>DNI / NIE'+
+        '<input id="fx-dni" type="text" autocomplete="off" value="'+esc(F.dni)+'" '+
+        'placeholder="00000000X"></label>'+
+    '</div>'+
+
+    '<div class="fx-lienzo-cab"><span>Tu firma</span>'+
+      '<button type="button" id="fx-limpiar" class="fx-link">Borrar y repetir</button></div>'+
+    '<canvas id="fx-lienzo" class="fx-lienzo"></canvas>'+
+    '<div class="fx-mini">Dibuja tu firma dentro del recuadro. En el móvil, con el dedo.</div>'+
+
+    '<label class="fx-check"><input type="checkbox" id="fx-acepta"'+(F.acepta?' checked':'')+'>'+
+      '<span>He leído el contrato completo y sus dieciséis cláusulas, y lo acepto. '+
+      'Entiendo que esta firma electrónica tiene la misma validez que una firma en papel, '+
+      'y que quedarán registrados la fecha, la hora y mi dirección IP como prueba de la firma.'+
+      '</span></label>'+
+
+    '<button type="button" id="fx-firmar" class="fx-boton"'+(listo && !F.enviando?'':' disabled')+'>'+
+      (F.enviando ? 'Enviando...' : 'Firmar el contrato')+'</button>'+
+    (F.aviso ? '<div class="fx-aviso">'+esc(F.aviso)+'</div>' : '')+
+    '<div class="fx-mini" style="margin-top:12px">Tus datos se envían cifrados a '+
+      'Grupo Evolvix Global, S.L. y se usan únicamente para formalizar este contrato. '+
+      'Puedes ejercer tus derechos de acceso, rectificación y supresión escribiendo a la '+
+      'dirección de contacto que figura en el documento.</div>'+
+  '</div>';
+}
+
+function cajaMensaje(titulo, texto, clase){
+  return '<div class="fx-wrap"><div class="fx-caja '+(clase||'')+'">'+
+    '<h2>'+esc(titulo)+'</h2>'+(texto ? '<p>'+esc(texto)+'</p>' : '')+'</div></div>';
+}
+
+function cajaError(e){
+  var M = {
+    'no-existe': ['Este enlace no es válido',
+      'Puede que se haya copiado a medias. Pide uno nuevo a tu contacto en Labs24k.'],
+    'caducado': ['El enlace ha caducado',
+      'Los enlaces de firma caducan por seguridad. Pide uno nuevo y podrás firmar sin problema.'],
+    'ya-firmado': ['Este contrato ya está firmado',
+      'No hace falta que hagas nada más. Si necesitas una copia, pídesela a tu contacto en Labs24k.'],
+    'anulado': ['Este contrato está anulado',
+      'Ponte en contacto con Labs24k para que te envíen la versión correcta.'],
+    'sin-token': ['Falta el enlace completo',
+      'Abre el enlace tal cual te lo enviaron, sin recortarlo.'],
+    'red': ['No se ha podido conectar',
+      'Comprueba tu conexión y vuelve a abrir el enlace. Si sigue igual, avisa a Labs24k.']
+  };
+  var m = M[e] || ['No se ha podido abrir el contrato', String(e)];
+  return '<div class="fx-wrap"><div class="fx-caja">'+
+    '<div class="fx-marca" style="justify-content:center;margin-bottom:14px">'+logo(40)+'</div>'+
+    '<h2>'+esc(m[0])+'</h2><p>'+esc(m[1])+'</p></div></div>';
+}
+
+function cajaHecho(){
+  return '<div class="fx-caja ok">'+
+    '<h2>Contrato firmado</h2>'+
+    '<p>Gracias, '+esc(F.nombre)+'. El contrato <strong>'+esc(F.datos.codigo)+'</strong> ha '+
+    'quedado firmado el '+esc(new Date(F.ts || Date.now()).toLocaleString('es-ES'))+'. '+
+    'Labs24k ya lo tiene y te enviará una copia.</p>'+
+    '<button type="button" id="fx-imprimir" class="fx-boton">Guardar mi copia en PDF</button>'+
+  '</div>';
+}
+
+/* ------------------------- LIENZO DE FIRMA ------------------------------ */
+function montaLienzo(){
+  var c = document.getElementById('fx-lienzo');
+  if(!c) return;
+  var r = window.devicePixelRatio || 1;
+  var ancho = c.clientWidth || 320, alto = 150;
+  c.width = ancho * r; c.height = alto * r; c.style.height = alto + 'px';
+  var g = c.getContext('2d');
+  g.scale(r, r);
+  g.lineWidth = 2.2; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#0F172A';
+  if(F.firmaImg){                        // repintar tras un renderizado
+    var im = new Image();
+    im.onload = function(){ g.drawImage(im, 0, 0, ancho, alto); };
+    im.src = F.firmaImg;
+  }
+
+  var pintando = false;
+  function punto(e){
+    var b = c.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return {x: t.clientX - b.left, y: t.clientY - b.top};
+  }
+  function empieza(e){ e.preventDefault(); pintando = true;
+    var p = punto(e); g.beginPath(); g.moveTo(p.x, p.y); }
+  function mueve(e){ if(!pintando) return; e.preventDefault();
+    var p = punto(e); g.lineTo(p.x, p.y); g.stroke(); }
+  function termina(){
+    if(!pintando) return;
+    pintando = false;
+    F.firmaImg = c.toDataURL('image/png');
+    var antes = F.trazos; F.trazos++;
+    if(!antes) refrescaBoton();
+  }
+
+  c.addEventListener('mousedown', empieza);
+  c.addEventListener('mousemove', mueve);
+  window.addEventListener('mouseup', termina);
+  c.addEventListener('touchstart', empieza, {passive:false});
+  c.addEventListener('touchmove', mueve, {passive:false});
+  c.addEventListener('touchend', termina);
+
+  var lim = document.getElementById('fx-limpiar');
+  if(lim) lim.onclick = function(){
+    g.clearRect(0, 0, c.width, c.height);
+    F.trazos = 0; F.firmaImg = null; refrescaBoton();
+  };
+}
+
+function refrescaBoton(){
+  var b = document.getElementById('fx-firmar');
+  if(!b) return;
+  b.disabled = !(F.nombre.trim().length > 2 && F.dni.trim().length > 7 &&
+                 F.trazos > 0 && F.acepta) || F.enviando;
+}
+
+/* ------------------------------ EVENTOS --------------------------------- */
+function eventosFirma(){
+  montaLienzo();
+  var n = document.getElementById('fx-nombre');
+  var d = document.getElementById('fx-dni');
+  var a = document.getElementById('fx-acepta');
+  if(n) n.oninput = function(){ F.nombre = n.value; refrescaBoton(); };
+  if(d) d.oninput = function(){ F.dni = d.value; refrescaBoton(); };
+  if(a) a.onchange = function(){ F.acepta = a.checked; refrescaBoton(); };
+
+  var b = document.getElementById('fx-firmar');
+  if(b) b.onclick = function(){
+    if(b.disabled) return;
+    F.enviando = true; F.aviso = ''; b.disabled = true; b.textContent = 'Enviando...';
+
+    var doc = document.querySelector('.doc.pdf.contrato');
+    huellaTexto(doc ? doc.innerText : '').then(function(huella){
+      return firmaRpc('firma_contrato', {
+        p_token: F.token, p_nombre: F.nombre.trim(), p_dni: F.dni.trim(),
+        p_firma: F.firmaImg, p_huella: huella, p_datos: {}
+      });
+    }).then(function(r){
+      F.enviando = false;
+      if(r && r.error){ F.aviso = mensajeError(r.error); pintaFirma(); return; }
+      F.ts = (r && r.ts) || new Date().toISOString();
+      F.paso = 'hecho'; pintaFirma();
+      window.scrollTo(0, 0);
+    }).catch(function(){
+      F.enviando = false;
+      F.aviso = 'No se ha podido enviar la firma. Comprueba tu conexión y vuelve a intentarlo.';
+      pintaFirma();
+    });
+  };
+}
+
+function mensajeError(e){
+  var M = {'falta-nombre':'Escribe tu nombre y apellidos completos.',
+           'falta-dni':'Revisa el DNI: parece incompleto.',
+           'falta-firma':'Dibuja tu firma en el recuadro antes de enviar.',
+           'firma-demasiado-grande':'La firma ha salido demasiado grande. Bórrala y hazla más simple.',
+           'ya-firmado':'Este contrato ya estaba firmado.',
+           'caducado':'El enlace ha caducado. Pide uno nuevo a Labs24k.',
+           'anulado':'Este contrato está anulado.',
+           'no-existe':'El enlace no es válido.'};
+  return M[e] || 'No se ha podido registrar la firma.';
+}
+
+/* ------------------------------ ARRANQUE -------------------------------- */
+function arrancaFirma(){
+  var m = /[#&?]t=([0-9a-f-]{36})/i.exec(window.location.hash || window.location.search);
+  F.token = m ? m[1] : null;
+  if(!F.token){ F.cargando = false; F.error = 'sin-token'; pintaFirma(); return; }
+  pintaFirma();
+
+  firmaRpc('contrato_para_firma', {p_token: F.token})
+    .then(function(r){
+      F.cargando = false;
+      if(!r || r.error){ F.error = (r && r.error) || 'no-existe'; pintaFirma(); return; }
+      F.datos = r;
+      F.nombre = r.rep || '';
+      pintaFirma();
+    })
+    .catch(function(){ F.cargando = false; F.error = 'red'; pintaFirma(); });
+}
+
+document.addEventListener('DOMContentLoaded', arrancaFirma);
+window.addEventListener('resize', function(){
+  clearTimeout(window.__fxR);
+  window.__fxR = setTimeout(function(){ if(F.paso === 'contrato' && F.datos) montaLienzo(); }, 200);
+});
+
+</script>
+</body>
+</html>
