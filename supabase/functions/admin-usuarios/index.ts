@@ -151,7 +151,12 @@ Deno.serve(async (req) => {
 
   if (!esAdmin && !altaDelegada && !verComo) {
     console.warn('Acceso denegado a admin-usuarios', { usuario: sesion.user.id, rol: quien?.rol });
-    return error('Esta operación es exclusiva del administrador.', 'ROL_INSUFICIENTE', 403);
+    // El mensaje dice con qué rol y estado se ha recibido la petición: así se
+    // distingue de un vistazo un permiso que falta de una función sin actualizar.
+    const rolTxt = !quien ? 'sin ficha en perfiles'
+      : `${quien.rol}${quien.estado !== 'Activo' ? ', ' + quien.estado : ''}`;
+    return error(`No tienes permiso para esta operación (tu cuenta figura como: ${rolTxt}).`,
+                 'ROL_INSUFICIENTE', 403);
   }
 
   // Cliente con la clave de servicio: solo a partir de aquí, y solo porque ya
