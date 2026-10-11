@@ -1713,37 +1713,39 @@ function progressRow(name, val, max, color, right){
 
 /* ------------------------------ DATOS MOCK ------------------------------ */
 var ROLES = {
-  admin:      {label:'Administrador',  desc:'Control total de la red'},
-  manager:    {label:'Jefe de Equipo', desc:'Supervision comercial'},
-  commercial: {label:'Gestión Comercial', desc:'Venta y prospección'},
-  backoffice: {label:'Back Office',    desc:'Tramitación y contratos'}
+  admin:       {label:'Administrador',  desc:'Control total de la red'},
+  coordinator: {label:'Coordinador',    desc:'Coordina Jefes de Equipo, Agentes y sus procesos'},
+  manager:     {label:'Jefe de Equipo', desc:'Lidera y supervisa a sus Agentes asignados'},
+  commercial:  {label:'Agente / Comercial', desc:'Llamadas, leads y televenta'},
+  backoffice:  {label:'Back Office / Tramitación', desc:'Validación de contratos y expedientes'},
+  support:     {label:'Soporte',        desc:'Posventa, incidencias y asistencia técnica'}
 };
 var MENU = [
-  {id:'dashboard',   label:'Panel Principal',            icon:'dashboard', sec:'General',   roles:['admin','manager','commercial','backoffice']},
-  {id:'calendar',    label:'Calendario y Citas',         icon:'calendar',  sec:'General',   roles:['admin','manager','commercial'], n:3},
-  {id:'academy',     label:'Academia y Cursos',          icon:'book',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
-  {id:'mission',     label:'Mission Control',            icon:'spark',     sec:'General',   roles:['admin','manager']},
+  {id:'dashboard',   label:'Panel Principal',            icon:'dashboard', sec:'General',   roles:['admin','coordinator','manager','commercial','backoffice','support']},
+  {id:'calendar',    label:'Calendario y Citas',         icon:'calendar',  sec:'General',   roles:['admin','coordinator','manager','commercial','support','backoffice'], n:3},
+  {id:'academy',     label:'Academia y Cursos',          icon:'book',      sec:'General',   roles:['admin','coordinator','manager','commercial','backoffice','support']},
+  {id:'mission',     label:'Mission Control',            icon:'spark',     sec:'General',   roles:['admin','coordinator','manager']},
   {id:'mificha',     label:'Mi Ficha',                   icon:'user',      sec:'General',   roles:['commercial']},
-  {id:'contactos',   label:'Contactos',                  icon:'user',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
-  {id:'resources',   label:'Centro de Recursos',         icon:'file',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
-  {id:'support',     label:'Soporte y Tickets',          icon:'help',      sec:'General',   roles:['admin','manager','commercial','backoffice']},
-  {id:'adminsupport',label:'Mesa de Incidencias',        icon:'alert',     sec:'Sistema',   roles:['admin','manager']},
-  {id:'quotes',      label:'Presupuestos',               icon:'calc',      sec:'Comercial', roles:['admin','manager','commercial']},
-  {id:'automation',  label:'Automation Packs',           icon:'bolt',      sec:'Comercial', roles:['admin','manager','commercial']},
-  {id:'packs',       label:'Packs Web 3D',               icon:'building',  sec:'Comercial', roles:['admin','manager','commercial']},
-  {id:'ranking',     label:'Ranking de la Red',          icon:'trend',     sec:'Comercial', roles:['admin','manager','commercial']},
-  {id:'funnels',     label:'Embudos de Venta',           icon:'filter',    sec:'Comercial', roles:['admin','manager','commercial']},
-  {id:'audits',      label:'Auditorías IA',              icon:'search',    sec:'Comercial', roles:['admin','manager','commercial']},
-  {id:'equipo',      label:'Fichas de Agentes',          icon:'users',     sec:'Comercial', roles:['admin','manager']},
-  {id:'clients',     label:'Clientes Activos',           icon:'users',     sec:'Comercial', roles:['admin','manager','commercial','backoffice']},
-  {id:'contracts',   label:'Contratos y Facturación',    icon:'file',      sec:'Operaciones', roles:['admin','manager','backoffice'], n:2},
-  {id:'backoffice',  label:'Back Office y Trámites',     icon:'case',      sec:'Operaciones', roles:['admin','backoffice','manager']},
-  {id:'voice_wa',    label:'Asistentes Voz y WhatsApp',  icon:'chat',      sec:'Operaciones', roles:['admin','manager']},
-  {id:'interviews',  label:'Entrevistas y Talento',      icon:'userPlus',  sec:'Operaciones', roles:['admin','manager'], n:2},
-  {id:'integrations',label:'Webmail y MetaTok',          icon:'plug',      sec:'Sistema',   roles:['admin','manager']},
+  {id:'contactos',   label:'Contactos',                  icon:'user',      sec:'General',   roles:['admin','coordinator','manager','commercial','backoffice','support']},
+  {id:'resources',   label:'Centro de Recursos',         icon:'file',      sec:'General',   roles:['admin','coordinator','manager','commercial','backoffice','support']},
+  {id:'support',     label:'Soporte y Tickets',          icon:'help',      sec:'General',   roles:['admin','coordinator','manager','commercial','backoffice','support']},
+  {id:'adminsupport',label:'Mesa de Incidencias',        icon:'alert',     sec:'Sistema',   roles:['admin','coordinator','manager','support']},
+  {id:'quotes',      label:'Presupuestos',               icon:'calc',      sec:'Comercial', roles:['admin','coordinator','manager','commercial']},
+  {id:'automation',  label:'Automation Packs',           icon:'bolt',      sec:'Comercial', roles:['admin','coordinator','manager','commercial']},
+  {id:'packs',       label:'Packs Web 3D',               icon:'building',  sec:'Comercial', roles:['admin','coordinator','manager','commercial']},
+  {id:'ranking',     label:'Ranking de la Red',          icon:'trend',     sec:'Comercial', roles:['admin','coordinator','manager','commercial']},
+  {id:'funnels',     label:'Embudos de Venta',           icon:'filter',    sec:'Comercial', roles:['admin','coordinator','manager','commercial']},
+  {id:'audits',      label:'Auditorías IA',              icon:'search',    sec:'Comercial', roles:['admin','coordinator','manager','commercial']},
+  {id:'equipo',      label:'Fichas de Agentes',          icon:'users',     sec:'Comercial', roles:['admin','coordinator','manager']},
+  {id:'clients',     label:'Clientes Activos',           icon:'users',     sec:'Comercial', roles:['admin','coordinator','manager','commercial','backoffice','support']},
+  {id:'contracts',   label:'Contratos y Facturación',    icon:'file',      sec:'Operaciones', roles:['admin','coordinator','manager','backoffice'], n:2},
+  {id:'backoffice',  label:'Back Office y Trámites',     icon:'case',      sec:'Operaciones', roles:['admin','backoffice','coordinator','manager']},
+  {id:'voice_wa',    label:'Asistentes Voz y WhatsApp',  icon:'chat',      sec:'Operaciones', roles:['admin','coordinator','manager']},
+  {id:'interviews',  label:'Entrevistas y Talento',      icon:'userPlus',  sec:'Operaciones', roles:['admin','coordinator','manager'], n:2},
+  {id:'integrations',label:'Webmail y MetaTok',          icon:'plug',      sec:'Sistema',   roles:['admin','coordinator','manager']},
   {id:'users',       label:'Usuarios y Accesos',         icon:'userPlus',  sec:'Sistema',   roles:['admin']},
   {id:'rolesadmin',  label:'Roles y Permisos',           icon:'shield',    sec:'Sistema',   roles:['admin']},
-  {id:'settings',    label:'Configuración del Sistema',  icon:'cog',       sec:'Sistema',   roles:['admin','manager','commercial','backoffice']}
+  {id:'settings',    label:'Configuración del Sistema',  icon:'cog',       sec:'Sistema',   roles:['admin','coordinator','manager','commercial','backoffice','support']}
 ];
 
 var DB = {
@@ -2790,7 +2792,7 @@ function academiaPct(){
   var t=0,d=0; CURSOS.forEach(function(c){ t+=c.L.length; d+=c.L.filter(function(l){ return l.ok; }).length; });
   return t?Math.round(d/t*100):0;
 }
-function puedeCrear(){ return S.role==='admin' || S.role==='manager'; }
+function puedeCrear(){ return S.role==='admin' || S.role==='coordinator' || S.role==='manager'; }
 
 /* ------------------------------ VISTA ----------------------------------- */
 function viewAcademy(v){
@@ -3126,16 +3128,15 @@ function acadEventos(){
 
 /* ------------------------- PERMISOS POR ROL ----------------------------- */
 var PERM = {
-  estado:  ['admin','manager','backoffice'],   // cambiar el estado del proyecto
-  hitos:   ['admin','manager','backoffice'],   // marcar hitos de implantacion
-  docs:    ['admin','manager','backoffice','commercial'],
-  notas:   ['admin','manager','backoffice','commercial'],
+  estado:  ['admin','coordinator','manager','backoffice'],   // cambiar el estado del proyecto
+  hitos:   ['admin','coordinator','manager','backoffice'],   // marcar hitos de implantacion
+  docs:    ['admin','coordinator','manager','backoffice','commercial'],
+  notas:   ['admin','coordinator','manager','backoffice','commercial','support'],
   borrar:  ['admin','backoffice'],
-  talento: ['admin','manager']
+  talento: ['admin','coordinator','manager']
 };
 function puede(a){ return (PERM[a]||[]).indexOf(S.role) > -1; }
-function rolCorto(){ return {admin:'Administrador',manager:'Jefe de Equipo',
-  commercial:'Gestión Comercial',backoffice:'Back Office'}[S.role]; }
+function rolCorto(){ return (ROLES[S.role] || {label:''}).label; }
 
 /* ------------------------- DATOS: EXPEDIENTES --------------------------- */
 var ESTADOS = ['Auditoría inicial','Implementación VAPI','Configurando WhatsApp Bot',
@@ -4183,7 +4184,7 @@ var DS = {
   descargas:[], descargasCargando:false
 };
 
-function dsPuedeGestionar(){ return S.role==='admin' || S.role==='manager'; }
+function dsPuedeGestionar(){ return S.role==='admin' || S.role==='coordinator' || S.role==='manager'; }
 
 function dsCarga(){
   DS.cargando = true; DS.error = null;
@@ -4417,7 +4418,7 @@ var SP_CATEGORIAS = ['Plataforma','Agentes IA','Facturación','Expedientes','Aca
 var SP_PRIORIDADES = [['baja','Baja'],['media','Media'],['alta','Alta'],['critica','Crítica']];
 var SP_ESTADOS = [['abierto','Abierto'],['en_progreso','En progreso'],['escalado','Escalado'],['resuelto','Resuelto'],['cerrado','Cerrado']];
 
-function spPuedeGestionar(){ return S.role==='admin' || S.role==='manager'; }
+function spPuedeGestionar(){ return S.role==='admin' || S.role==='coordinator' || S.role==='manager' || S.role==='support'; }
 function spNombrePrio(p){ var f=SP_PRIORIDADES.filter(function(x){return x[0]===p;})[0]; return f?f[1]:p; }
 function spNombreEstado(e){ var f=SP_ESTADOS.filter(function(x){return x[0]===e;})[0]; return f?f[1]:e; }
 function spChipPrio(p){
@@ -5347,10 +5348,10 @@ var CFG_DEFECTO = {
   apis: { mailServer: 'hostalia.webmail.es', vapiOk: false, crmOk: false },
   seg: { sesion: true, doble: false, auditoria: true, ipExterna: false },
   perms: {
-    estado: ['admin','manager','backoffice'],
-    hitos:  ['admin','manager','backoffice'],
-    docs:   ['admin','manager','backoffice','commercial'],
-    notas:  ['admin','manager','backoffice','commercial'],
+    estado: ['admin','coordinator','manager','backoffice'],
+    hitos:  ['admin','coordinator','manager','backoffice'],
+    docs:   ['admin','coordinator','manager','backoffice','commercial'],
+    notas:  ['admin','coordinator','manager','backoffice','commercial','support'],
     borrar: ['admin','backoffice']
   }
 };
@@ -6910,6 +6911,11 @@ var PERMISOS = [
    permisos_de_rol() en NO-SUBIR-supabase/10-soporte.sql. */
 var PERM_ROL = {
   admin:      '*',
+  coordinator:['presu.ver','presu.crear','presu.dto','funnel.ver','exp.ver','exp.estado','exp.hitos',
+               'exp.docs','hr.ver','hr.mover','hr.contratar','com.llamadas','com.wsp','com.plant','sys.audit',
+               'contactos.ver','contactos.crea','contactos.editar','contactos.notas','contactos.comentar','contactos.docs','contactos.borrar',
+               'recursos.ver','recursos.subir','recursos.borrar',
+               'soporte.ver','soporte.gestionar','soporte.escalar'],
   manager:    ['presu.ver','presu.crear','presu.dto','funnel.ver','exp.ver','exp.estado','exp.hitos',
                'exp.docs','hr.ver','hr.mover','hr.contratar','com.llamadas','com.wsp','com.plant','sys.audit',
                'contactos.ver','contactos.crea','contactos.editar','contactos.notas','contactos.comentar','contactos.docs','contactos.borrar',
@@ -6922,7 +6928,11 @@ var PERM_ROL = {
   backoffice: ['exp.ver','exp.estado','exp.hitos','exp.docs','exp.borrar','presu.ver','com.llamadas',
                'contactos.ver','contactos.editar','contactos.notas','contactos.comentar','contactos.docs','contactos.borrar',
                'recursos.ver',
-               'soporte.ver']
+               'soporte.ver'],
+  support:    ['exp.ver','com.llamadas',
+               'contactos.ver','contactos.notas','contactos.comentar',
+               'recursos.ver',
+               'soporte.ver','soporte.gestionar','soporte.escalar']
 };
 function todasLasClaves(){
   var r = []; PERMISOS.forEach(function(g){ g.items.forEach(function(i){ r.push(i.k); }); }); return r;
@@ -7365,15 +7375,15 @@ USU = {form:null, creado:null, filtro:'', rol:'', est:'', det:null, tab:'info',
    permiso «sys.alta_agentes», solo agentes. La Edge Function lo vuelve a
    comprobar y fuerza el rol y el superior; esto solo lo refleja. */
 function puedoAltaAgentes(){
-  return S.role === 'admin' || S.role === 'manager' || !!(S.perms && S.perms['sys.alta_agentes']);
+  return S.role === 'admin' || esMando() || !!(S.perms && S.perms['sys.alta_agentes']);
 }
 function rolesAlta(){
   return S.role === 'admin' ? Object.keys(ROLES) :
-         S.role === 'manager' ? ['commercial', 'backoffice'] : ['commercial'];
+         S.role === 'coordinator' ? ['manager', 'commercial'] : ['commercial'];
 }
 
 function viewAltaAgentes(v){
-  var yo = yoUsuario(), jefe = S.role === 'manager';
+  var yo = yoUsuario(), jefe = esMando();
   var roles = rolesAlta();
   /* El jefe ve a su equipo (quien tiene a su cargo); quien solo tiene el
      permiso de alta, los agentes que puede ver. */
@@ -7470,8 +7480,16 @@ function vchEventos(){
    El superior siempre tiene más rango; la base de datos lo vuelve a
    comprobar (14-superiores.sql). */
 function rangoU(u){
-  return !u ? 0 : u.raiz ? 4 : u.rol === 'admin' ? 3 : u.rol === 'manager' ? 2 : 1;
+  return !u ? 0 : u.raiz ? 5 : u.rol === 'admin' ? 4 : u.rol === 'coordinator' ? 3 : u.rol === 'manager' ? 2 : 1;
 }
+/* ¿Depende u de jefe, directa o indirectamente? (como es_subordinado()) */
+function dependeDe(u, jefe){
+  if(!u || !jefe) return false;
+  var paso = u.sup, n = 0;
+  while(paso && n++ < 10){ if(paso === jefe.id) return true; var s = usuarioPorId(paso); paso = s ? s.sup : null; }
+  return false;
+}
+function esMando(){ return S.role === 'coordinator' || S.role === 'manager'; }
 function superioresPosibles(u){
   return USUARIOS.filter(function(x){
     return x.id !== u.id && x.est === 'Activo' && rangoU(x) > rangoU(u);
@@ -7487,13 +7505,13 @@ function vcPuede(u){
   var yo = yoUsuario();
   if(!u || !yo || esRaiz(u) || u.id === yo.id || u.est !== 'Activo') return false;
   if(esRaiz(yo)) return true;
-  if(u.sup && u.sup === yo.id) return true;
+  if(dependeDe(u, yo)) return true;
   return yo.rol === 'admin' && u.rol !== 'admin';
 }
 /* Las personas que tiene a su cargo un jefe (sin contarse a sí mismo). */
 function equipoDe(yo){
   if(!yo) return [];
-  return USUARIOS.filter(function(u){ return u.id !== yo.id && u.sup === yo.id && rangoU(u) < rangoU(yo); });
+  return USUARIOS.filter(function(u){ return u.id !== yo.id && dependeDe(u, yo) && rangoU(u) < rangoU(yo); });
 }
 /* Roles que quien edita puede poner a esta persona. */
 function rolesEditables(u){
@@ -7528,7 +7546,7 @@ function viewUsers(v){
   /* El Jefe de Equipo ve esta misma pantalla, limitada a su equipo
      (17-jefe-gestiona-equipo.sql). Quien solo tiene el permiso de alta,
      la vista reducida de alta de agentes. */
-  var jefe = S.role === 'manager';
+  var jefe = esMando();
   if(S.role !== 'admin' && !jefe && puedoAltaAgentes()){ viewAltaAgentes(v); return; }
   if(S.role !== 'admin' && !jefe){
     v.innerHTML = '<div class="card" style="text-align:center;padding:44px">'+
@@ -7729,7 +7747,7 @@ function altaHTML(){
   return '<div class="ov" data-ov="alta"><div class="modal" style="max-width:600px">'+
     '<div class="row" style="justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:16px">'+
       '<h3 style="margin:0;font-size:16px;color:#fff">'+
-        (S.role === 'admin' || S.role === 'manager' ? 'Dar de alta a un usuario' : 'Dar de alta a un agente')+'</h3>'+
+        (S.role === 'admin' || esMando() ? 'Dar de alta a un usuario' : 'Dar de alta a un agente')+'</h3>'+
       '<button class="icon-btn" data-u-cerrar="1">'+ic('x',16)+'</button></div>'+
     '<div class="grid g-2">'+
       '<div class="field"><label class="f">Nombre</label>'+
@@ -9281,7 +9299,7 @@ var AG = {
   nuevo:{tipo:'nota', titulo:'', texto:'', fecha:''}
 };
 
-function agDirijo(){ return S.role === 'admin' || S.role === 'manager'; }
+function agDirijo(){ return S.role === 'admin' || S.role === 'coordinator' || S.role === 'manager'; }
 function agConectado(){ return typeof SB !== 'undefined' && SB.estado === 'conectado'; }
 function agYoId(){
   if(agConectado() && SB.perfil) return SB.perfil.id;
@@ -9294,7 +9312,7 @@ function agAgentes(){
      la columna aún no existe en la base, se ven todos, como antes. */
   var yo = yoUsuario(), hayJerarquia = USUARIOS.some(function(u){ return u.conSup; });
   if(!yo || (SB.estado === 'conectado' && !hayJerarquia)) return ag;
-  return ag.filter(function(u){ return u.sup === yo.id; });
+  return ag.filter(function(u){ return dependeDe(u, yo); });
 }
 function agFichaVacia(id){
   return {agente_id:id, zona:'', equipo:'', especialidad:'', incorporacion:'',

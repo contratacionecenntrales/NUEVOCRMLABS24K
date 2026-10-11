@@ -45,7 +45,7 @@ if (!ORIGEN) {
   throw new Error('Falta la variable de entorno FRONTEND_ORIGIN: configúrala en el proyecto de Supabase antes de desplegar esta función.');
 }
 
-const ROLES    = ['admin', 'manager', 'commercial', 'backoffice'];
+const ROLES    = ['admin', 'coordinator', 'manager', 'commercial', 'backoffice', 'support'];
 const CLAVE_MIN = 10;
 
 const cabeceras = {
@@ -138,12 +138,13 @@ Deno.serve(async (req) => {
 
   const activo   = !!quien && quien.estado === 'Activo';
   const esAdmin  = activo && quien.rol === 'admin';
-  // Alta delegada: solo la ruta de alta. El Jefe de Equipo puede dar de alta
-  // cuentas de rango inferior (Gestión Comercial y Back Office); quien tenga
-  // el permiso «sys.alta_agentes», solo agentes. Los roles se fuerzan abajo.
-  const ROLES_DELEGADOS = quien?.rol === 'manager' ? ['commercial', 'backoffice'] : ['commercial'];
+  // Alta delegada: solo la ruta de alta. Coordinador: Jefes de Equipo y
+  // Agentes; Jefe de Equipo: Agentes; con «sys.alta_agentes»: Agentes. Igual
+  // que roles_asignables() en 19-jerarquia-roles.sql.
+  const ROLES_DELEGADOS = quien?.rol === 'coordinator' ? ['manager', 'commercial'] : ['commercial'];
   const altaDelegada = !esAdmin && activo && req.method === 'POST' && !id &&
-                       (quien.rol === 'manager' || quien.permisos?.['sys.alta_agentes'] === true);
+                       (quien.rol === 'coordinator' || quien.rol === 'manager' ||
+                        quien.permisos?.['sys.alta_agentes'] === true);
 
   // Ver como: la regla de quién puede entrar en qué cuenta se comprueba abajo,
   // con la ficha del destino delante.
@@ -191,7 +192,15 @@ Deno.serve(async (req) => {
       if (destino.raiz) {
         return error('En la cuenta del Super Administrador no se puede entrar.', 'RAIZ_PROTEGIDA', 403);
       }
-      const aSuCargo = destino.superior_id === quien.id;
+      // A su cargo directa o indirectamente: se sube por la cadena de
+      // superiores del destino (el Coordinador entra en los agentes de sus jefes).
+      let aSuCargo = false;
+      let paso: string | null = destino.superior_id;
+      for (let n = 0; paso && n < 10 && !aSuCargo; n++) {
+        if (paso === quien.id) { aSuCargo = true; break; }
+        const { data: arriba } = await admin.from('perfiles').select('superior_id').eq('id', paso).maybeSingle();
+        paso = arriba?.superior_id ?? null;
+      }
       const porRango = quien.raiz || (quien.rol === 'admin' && destino.rol !== 'admin');
       if (!aSuCargo && !porRango) {
         return error('Solo puedes entrar en las cuentas de las personas que tienes a tu cargo.',
@@ -243,9 +252,9 @@ Deno.serve(async (req) => {
       if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return error('Correo no válido.', 'EMAIL_INVALIDO');
       if (!ROLES.includes(b.rol)) return error('Rol no válido.', 'ROL_INVALIDO');
       if (altaDelegada && !ROLES_DELEGADOS.includes(b.rol)) {
-        return error(quien.rol === 'manager'
-          ? 'Solo puedes dar de alta cuentas de Gestión Comercial o Back Office.'
-          : 'Solo puedes dar de alta agentes (Gestión Comercial).', 'ROL_NO_PERMITIDO', 403);
+        return error(quien.rol === 'coordinator'
+          ? 'Solo puedes dar de alta Jefes de Equipo y Agentes.'
+          : 'Solo puedes dar de alta Agentes.', 'ROL_NO_PERMITIDO', 403);
       }
       if (b.prefijo && !/^\+\d{1,3}$/.test(String(b.prefijo))) {
         return error('El prefijo debe ser internacional, como +34.', 'PREFIJO_INVALIDO');
@@ -264,7 +273,7 @@ Deno.serve(async (req) => {
       // El superior tiene que tener más rango; si no (un admin que da de alta
       // a otro admin), la nueva cuenta cuelga del Super Administrador.
       const rango = (rol: string, raiz: boolean) =>
-        raiz ? 4 : rol === 'admin' ? 3 : rol === 'manager' ? 2 : 1;
+        raiz ? 5 : rol === 'admin' ? 4 : rol === 'coordinator' ? 3 : rol === 'manager' ? 2 : 1;
       const { data: supFila } = await admin.from('perfiles')
         .select('rol, raiz').eq('id', superiorId).maybeSingle();
       if (!supFila || rango(supFila.rol, supFila.raiz) <= rango(b.rol, false)) {

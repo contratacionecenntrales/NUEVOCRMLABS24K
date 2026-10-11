@@ -69,6 +69,8 @@ Proyecto: `ezwhkpfqnzyfulivlows`. En el editor SQL, **en este orden**:
 | `15-empresa-cif.sql` | Empresa y CIF de cada usuario, editables en Usuarios y Accesos |
 | `16-alta-por-sql.sql` | Alta de usuarios sin depender de la Edge Function |
 | `17-jefe-gestiona-equipo.sql` | Gestión completa del equipo por su Jefe de Equipo |
+| `18-roles-nuevos.sql` | Roles Coordinador y Soporte (ejecución aparte) |
+| `19-jerarquia-roles.sql` | Jerarquía completa y privacidad vertical (requiere volver a desplegar `admin-usuarios`) |
 
 Después:
 

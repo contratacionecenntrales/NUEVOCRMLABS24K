@@ -27,6 +27,8 @@ de notas, copia **todo** el contenido, pégalo y pulsa **Run**. En este orden:
 | 15 | `15-empresa-cif.sql` | Empresa y CIF en la ficha de cada usuario |
 | 16 | `16-alta-por-sql.sql` | Alta de usuarios desde la base de datos (Administrador: cualquier rol; Jefe de Equipo: Comercial y Back Office a su cargo). El panel la usa antes que la Edge Function |
 | 17 | `17-jefe-gestiona-equipo.sql` | El Jefe de Equipo edita, cambia el rol (Comercial / Back Office) y el superior, bloquea, restablece la contraseña y borra a su equipo |
+| 18 | `18-roles-nuevos.sql` | Roles Coordinador y Soporte. **Ejecutar solo, en su propia ejecución** |
+| 19 | `19-jerarquia-roles.sql` | Jerarquía en cascada, permisos de cada rol y privacidad vertical en usuarios, bitácora, contactos, contratos y tickets |
 
 Con el **1** y el **2** ya entras. El **6** es de seguridad y no es opcional.
 Los demás son para los módulos correspondientes.
